@@ -62,7 +62,7 @@ public class ItemRegistry {
     public static ItemEntry BOAT;
     // Gold ID, used in PiglinEntity.java
     public static ItemEntry GOLD;
-
+    public static ItemEntry BUCKET;
     public static int BARRIER_INDEX = 0;
 
     public static void init() {
