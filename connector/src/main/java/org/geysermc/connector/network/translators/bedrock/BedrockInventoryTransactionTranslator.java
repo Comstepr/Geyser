@@ -139,7 +139,7 @@ public class BedrockInventoryTransactionTranslator extends PacketTranslator<Inve
                         if (shieldSlot != null && shieldSlot.getId() == ItemRegistry.SHIELD.getJavaId()) {
                             break;
                         } // Handled in Entity.java
-                        if (packet.getItemInHand() != null && packet.getItemInHand().getId() == ItemRegistry.BUCKET) {
+                        if (packet.getItemInHand() != null && packet.getItemInHand().getId() == ItemRegistry.BUCKET.getBedrockId()) {
                             break;
                         }
                         ClientPlayerUseItemPacket useItemPacket = new ClientPlayerUseItemPacket(Hand.MAIN_HAND);
