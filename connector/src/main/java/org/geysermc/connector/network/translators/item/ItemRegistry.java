@@ -61,7 +61,8 @@ public class ItemRegistry {
     // Boat ID, used in BedrockInventoryTransactionTranslator.java
     public static ItemEntry BOAT;
     // Gold ID, used in PiglinEntity.java
-    public static ItemEntry GOLD;
+    public static ItemEntry GOLD; 
+    // Bucket ID, used in BedrockInventoryTransactionTranslator.java
     public static ItemEntry BUCKET;
     public static int BARRIER_INDEX = 0;
 
