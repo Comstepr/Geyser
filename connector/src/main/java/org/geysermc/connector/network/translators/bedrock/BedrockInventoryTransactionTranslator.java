@@ -99,7 +99,7 @@ public class BedrockInventoryTransactionTranslator extends PacketTranslator<Inve
                         session.sendDownstreamPacket(blockPacket);
 
                         // Otherwise boats will not be able to be placed in survival
-                       if (packet.getItemInHand() != null && (packet.getItemInHand().getId() == ItemRegistry.BOAT.getBedrockId() || packet.getItemInHand().getId() == ItemRegistry.BUCKET.getBedrockId()) {
+                       if (packet.getItemInHand() != null && (packet.getItemInHand().getId() == ItemRegistry.BOAT.getBedrockId() || packet.getItemInHand().getId() == ItemRegistry.BUCKET.getBedrockId())) {
                            ClientPlayerUseItemPacket itemPacket = new ClientPlayerUseItemPacket(Hand.MAIN_HAND);
                            session.sendDownstreamPacket(itemPacket);
                        }
