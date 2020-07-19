@@ -54,6 +54,7 @@ import org.geysermc.connector.network.translators.item.ItemEntry;
 import org.geysermc.connector.network.translators.item.ItemRegistry;
 import org.geysermc.connector.network.translators.sound.EntitySoundInteractionHandler;
 import org.geysermc.connector.network.translators.world.block.BlockTranslator;
+import org.geysermc.connector.utils.ChunkUtils;
 import org.geysermc.connector.utils.InventoryUtils;
 
 @Translator(packet = InventoryTransactionPacket.class)
@@ -173,6 +174,18 @@ public class BedrockInventoryTransactionTranslator extends PacketTranslator<Inve
                         Position pos = new Position(packet.getBlockPosition().getX(), packet.getBlockPosition().getY(), packet.getBlockPosition().getZ());
                         ClientPlayerActionPacket breakPacket = new ClientPlayerActionPacket(action, pos, BlockFace.values()[packet.getBlockFace()]);
                         session.sendDownstreamPacket(breakPacket);
+
+                        // Add a check if mobile players try to break blocks too far away
+                        // 6f is an approximation
+                        if (packet.getPlayerPosition().distance(packet.getBlockPosition().toFloat()) > 6f) {
+                            if (session.getConnector().getConfig().isCacheChunks()) {
+                                ChunkUtils.updateBlock(session, session.getConnector().getWorldManager().getBlockAt(session,
+                                        packet.getBlockPosition().getX(), packet.getBlockPosition().getY(), packet.getBlockPosition().getZ()), packet.getBlockPosition());
+                            } else {
+                                session.sendMessage("The block you just destroyed was too far away, and may not have changed for other players.");
+                            }
+                        }
+
                         break;
                 }
                 break;
