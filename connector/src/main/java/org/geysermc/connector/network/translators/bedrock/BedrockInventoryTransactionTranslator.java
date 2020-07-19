@@ -32,6 +32,7 @@ import com.github.steveice10.mc.protocol.data.game.entity.player.Hand;
 import com.github.steveice10.mc.protocol.data.game.entity.player.InteractAction;
 import com.github.steveice10.mc.protocol.data.game.entity.player.PlayerAction;
 import com.github.steveice10.mc.protocol.data.game.world.block.BlockFace;
+import com.github.steveice10.mc.protocol.data.game.world.block.BlockState;
 import com.github.steveice10.mc.protocol.packet.ingame.client.player.ClientPlayerActionPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.client.player.ClientPlayerInteractEntityPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.client.player.ClientPlayerPlaceBlockPacket;
@@ -99,7 +100,7 @@ public class BedrockInventoryTransactionTranslator extends PacketTranslator<Inve
                         session.sendDownstreamPacket(blockPacket);
 
                         // Otherwise boats will not be able to be placed in survival
-                       if (packet.getItemInHand() != null && packet.getItemInHand().getId() == ItemRegistry.BOAT.getBedrockId()) {
+                        if (packet.getItemInHand() != null && (packet.getItemInHand().getId() == ItemRegistry.BOAT || packet.getItemInHand().getId() == ItemRegistry.BUCKET)) {
                            ClientPlayerUseItemPacket itemPacket = new ClientPlayerUseItemPacket(Hand.MAIN_HAND);
                            session.sendDownstreamPacket(itemPacket);
                        }
@@ -139,6 +140,9 @@ public class BedrockInventoryTransactionTranslator extends PacketTranslator<Inve
                         if (shieldSlot != null && shieldSlot.getId() == ItemRegistry.SHIELD.getJavaId()) {
                             break;
                         } // Handled in Entity.java
+                        if (packet.getItemInHand() != null && packet.getItemInHand().getId() == ItemRegistry.BUCKET) {
+                            break;
+                        }
                         ClientPlayerUseItemPacket useItemPacket = new ClientPlayerUseItemPacket(Hand.MAIN_HAND);
                         session.sendDownstreamPacket(useItemPacket);
                         // Used for sleeping in beds
