@@ -36,14 +36,13 @@ jobs:
           name: Geyser-BungeeCord
           path: bootstrap/bungeecord/target/Geyser-BungeeCord.jar
           
-    - name: push
-      uses: github-actions-x/commit@v2.6
-      if: success()
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        push-branch: 'master'
-        commit-message: 'publish'
-        force-add: 'true'
-        files: /home/runner/work/Geyser/Geyser/bootstrap/spigot/target/Geyser-Spigot.jar /home/runner/work/Geyser/Geyser/bootstrap/spigot/target/Geyser-BungeeCord.jar
-        name: GHActions
-        email:
+      - name: push
+        uses: github-actions-x/commit@v2.6
+        if: success()
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          push-branch: 'master'
+          commit-message: 'publish'
+          force-add: 'true'
+          files: /home/runner/work/Geyser/Geyser/bootstrap/spigot/target/Geyser-Spigot.jar /home/runner/work/Geyser/Geyser/bootstrap/spigot/target/Geyser-BungeeCord.jar
+          name: GHActions
