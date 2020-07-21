@@ -27,11 +27,11 @@ jobs:
         uses: actions/upload-artifact@v2
         if: success()
         with:
-          name: Geyser Spigot
+          name: Geyser-Spigot
           path: bootstrap/spigot/target/Geyser-Spigot.jar
       - name: Archive artifacts (Geyser BungeeCord)
         uses: actions/upload-artifact@v2
         if: success()
         with:
-          name: Geyser BungeeCord
+          name: Geyser-BungeeCord
           path: bootstrap/bungeecord/target/Geyser-BungeeCord.jar
