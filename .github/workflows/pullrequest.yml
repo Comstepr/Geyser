@@ -44,5 +44,5 @@ jobs:
           push-branch: 'master'
           commit-message: 'publish'
           force-add: 'true'
-          files: /home/runner/work/Geyser/Geyser/bootstrap/spigot/target/Geyser-Spigot.jar /home/runner/work/Geyser/Geyser/bootstrap/spigot/target/Geyser-BungeeCord.jar
+          files: bootstrap/bungeecord/target/Geyser-BungeeCord.jar bootstrap/bungeecord/target/Geyser-Spigot.jar
           name: GHActions
