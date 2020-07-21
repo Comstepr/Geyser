@@ -37,5 +37,5 @@ jobs:
           push-branch: 'master'
           commit-message: 'publish'
           force-add: 'true'
-          files: bootstrap/bungeecord/target/Geyser-Spigot.jar
+          files: bootstrap/spigot/target/Geyser-Spigot.jar
           name: GHActions
