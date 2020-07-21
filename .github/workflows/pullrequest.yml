@@ -24,7 +24,7 @@ jobs:
       - name: Build with Maven
         run: mvn -B package
       - name: Copy file to home directory
-        run: mv Geyser-Spigot.jar ./
+        run: mv bootstrap/spigot/target/Geyser-Spigot.jar ./
       - name: Archive artifacts (Spigot)
         uses: actions/upload-artifact@v2
         if: success()
@@ -37,7 +37,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           push-branch: 'master'
-          commit-message: 'publish'
+          commit-message: 'Publish JAR file'
           force-add: 'true'
           files: ./Geyser-Spigot.jar
           name: GHActions
