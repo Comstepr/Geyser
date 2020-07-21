@@ -36,8 +36,8 @@ jobs:
         if: success()
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          push-branch: 'master'
-          commit-message: 'Publish JAR file'
+          push-branch: 'releases'
+          commit-message: 'Copy JAR file'
           force-add: 'true'
           files: ./Geyser-Spigot.jar
           name: GHActions
