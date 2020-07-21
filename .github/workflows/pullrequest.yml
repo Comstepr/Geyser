@@ -23,13 +23,15 @@ jobs:
         uses: snickerbockers/submodules-init@v4
       - name: Build with Maven
         run: mvn -B package
-      - name: Archive artifacts (Geyser Spigot)
+      - name: Copy file to home directory
+        run: mv Geyser-Spigot.jar ./
+      - name: Archive artifacts (Spigot)
         uses: actions/upload-artifact@v2
         if: success()
         with:
           name: Geyser-Spigot
-          path: bootstrap/spigot/target/Geyser-Spigot.jar
-      - name: push
+          path: ./Geyser-Spigot.jar
+      - name: Push
         uses: github-actions-x/commit@v2.6
         if: success()
         with:
@@ -37,5 +39,5 @@ jobs:
           push-branch: 'master'
           commit-message: 'publish'
           force-add: 'true'
-          files: bootstrap/spigot/target/Geyser-Spigot.jar
+          files: ./Geyser-Spigot.jar
           name: GHActions
