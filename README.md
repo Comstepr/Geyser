@@ -1,6 +1,8 @@
-**This is Comstepr's version of Geyser. It may contain bugs. Use it at your own risk.**
+**Comstepr's fork of Geyser**
 
-## Links to GeyserMC:
+[![Crowdin](https://badges.crowdin.net/geyser/localized.svg)](https://translate.geysermc.org/)
+
+## Links:
 - Website: https://geysermc.org
 - Docs: https://github.com/GeyserMC/Geyser/wiki
 - Download: http://ci.geysermc.org
