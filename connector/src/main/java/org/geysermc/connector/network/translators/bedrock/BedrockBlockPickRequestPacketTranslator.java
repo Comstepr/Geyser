@@ -97,4 +97,3 @@ public class BedrockBlockPickRequestPacketTranslator extends PacketTranslator<Bl
         }
     }
 }
-
