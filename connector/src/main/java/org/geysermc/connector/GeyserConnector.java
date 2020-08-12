@@ -128,7 +128,6 @@ public class GeyserConnector {
         EntityIdentifierRegistry.init();
         ItemRegistry.init();
         ItemTranslator.init();
-        CollisionTranslator.init();
         LocaleUtils.init();
         PotionMixRegistry.init();
         SoundRegistry.init();
