@@ -23,10 +23,9 @@
  * @link https://github.com/GeyserMC/Geyser
  */
 
-package org.geysermc.connector.network.translators.bedrock;
+package org.geysermc.connector.network.translators.bedrock.entity.player;
 
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.Position;
-import com.github.steveice10.mc.protocol.data.game.entity.player.GameMode;
 import com.github.steveice10.mc.protocol.data.game.entity.player.PlayerAction;
 import com.github.steveice10.mc.protocol.data.game.entity.player.PlayerState;
 import com.github.steveice10.mc.protocol.data.game.world.block.BlockFace;
@@ -40,7 +39,7 @@ import com.nukkitx.protocol.bedrock.packet.EntityEventPacket;
 import com.nukkitx.protocol.bedrock.packet.LevelEventPacket;
 import com.nukkitx.protocol.bedrock.packet.PlayStatusPacket;
 import com.nukkitx.protocol.bedrock.packet.PlayerActionPacket;
-import org.geysermc.connector.entity.PlayerEntity;
+import org.geysermc.connector.entity.Entity;
 import org.geysermc.connector.network.session.GeyserSession;
 import org.geysermc.connector.network.translators.PacketTranslator;
 import org.geysermc.connector.network.translators.Translator;
@@ -53,7 +52,7 @@ public class BedrockActionTranslator extends PacketTranslator<PlayerActionPacket
 
     @Override
     public void translate(PlayerActionPacket packet, GeyserSession session) {
-        PlayerEntity entity = session.getPlayerEntity();
+        Entity entity = session.getPlayerEntity();
         if (entity == null)
             return;
 
@@ -79,9 +78,7 @@ public class BedrockActionTranslator extends PacketTranslator<PlayerActionPacket
                 break;
             case START_GLIDE:
                 // Otherwise gliding will not work in creative
-                ClientPlayerAbilitiesPacket playerAbilitiesPacket = new ClientPlayerAbilitiesPacket(
-                        false, false, false, session.getGameMode() == GameMode.CREATIVE
-                );
+                ClientPlayerAbilitiesPacket playerAbilitiesPacket = new ClientPlayerAbilitiesPacket(false);
                 session.sendDownstreamPacket(playerAbilitiesPacket);
             case STOP_GLIDE:
                 ClientPlayerStatePacket glidePacket = new ClientPlayerStatePacket((int) entity.getEntityId(), PlayerState.START_ELYTRA_FLYING);
@@ -90,22 +87,22 @@ public class BedrockActionTranslator extends PacketTranslator<PlayerActionPacket
             case START_SNEAK:
                 ClientPlayerStatePacket startSneakPacket = new ClientPlayerStatePacket((int) entity.getEntityId(), PlayerState.START_SNEAKING);
                 session.sendDownstreamPacket(startSneakPacket);
-                entity.setSneaking(true);
+                session.setSneaking(true);
                 break;
             case STOP_SNEAK:
                 ClientPlayerStatePacket stopSneakPacket = new ClientPlayerStatePacket((int) entity.getEntityId(), PlayerState.STOP_SNEAKING);
                 session.sendDownstreamPacket(stopSneakPacket);
-                entity.setSneaking(false);
+                session.setSneaking(false);
                 break;
             case START_SPRINT:
                 ClientPlayerStatePacket startSprintPacket = new ClientPlayerStatePacket((int) entity.getEntityId(), PlayerState.START_SPRINTING);
                 session.sendDownstreamPacket(startSprintPacket);
-                entity.setSprinting(true);
+                session.setSprinting(true);
                 break;
             case STOP_SPRINT:
                 ClientPlayerStatePacket stopSprintPacket = new ClientPlayerStatePacket((int) entity.getEntityId(), PlayerState.STOP_SPRINTING);
                 session.sendDownstreamPacket(stopSprintPacket);
-                entity.setSprinting(false);
+                session.setSprinting(false);
                 break;
             case DROP_ITEM:
                 ClientPlayerActionPacket dropItemPacket = new ClientPlayerActionPacket(PlayerAction.DROP_ITEM, position, BlockFace.values()[packet.getFace()]);
@@ -119,6 +116,18 @@ public class BedrockActionTranslator extends PacketTranslator<PlayerActionPacket
                 // Handled in BedrockInventoryTransactionTranslator
                 break;
             case START_BREAK:
+                if (session.getConnector().getConfig().isCacheChunks()) {
+                    if (packet.getFace() == BlockFace.UP.ordinal()) {
+                        int blockUp = session.getConnector().getWorldManager().getBlockAt(session, packet.getBlockPosition().add(0, 1, 0));
+                        String identifier = BlockTranslator.getJavaIdBlockMap().inverse().get(blockUp);
+                        if (identifier.startsWith("minecraft:fire") || identifier.startsWith("minecraft:soul_fire")) {
+                            ClientPlayerActionPacket startBreakingPacket = new ClientPlayerActionPacket(PlayerAction.START_DIGGING, new Position(packet.getBlockPosition().getX(),
+                                    packet.getBlockPosition().getY() + 1, packet.getBlockPosition().getZ()), BlockFace.values()[packet.getFace()]);
+                            session.sendDownstreamPacket(startBreakingPacket);
+                            break;
+                        }
+                    }
+                }
                 ClientPlayerActionPacket startBreakingPacket = new ClientPlayerActionPacket(PlayerAction.START_DIGGING, new Position(packet.getBlockPosition().getX(),
                         packet.getBlockPosition().getY(), packet.getBlockPosition().getZ()), BlockFace.values()[packet.getFace()]);
                 session.sendDownstreamPacket(startBreakingPacket);
@@ -149,9 +158,9 @@ public class BedrockActionTranslator extends PacketTranslator<PlayerActionPacket
                 }
                 break;
             case JUMP:
-                entity.setJumping(true);
+                session.setJumping(true);
                 session.getConnector().getGeneralThreadPool().schedule(() -> {
-                    entity.setJumping(false);
+                    session.setJumping(false);
                 }, 1, TimeUnit.SECONDS);
                 break;
         }
