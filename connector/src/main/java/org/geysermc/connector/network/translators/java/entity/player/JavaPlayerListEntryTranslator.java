@@ -82,7 +82,7 @@ public class JavaPlayerListEntryTranslator extends PacketTranslator<ServerPlayer
                     playerEntity.setPlayerList(true);
                     playerEntity.setValid(true);
 
-                    PlayerListPacket.Entry playerListEntry = SkinUtils.buildCachedEntry(session, playerEntity);
+                    PlayerListPacket.Entry playerListEntry = SkinUtils.buildCachedEntry(session, entry.getProfile(), playerEntity.getGeyserId());
 
                     translate.getEntries().add(playerListEntry);
                     break;
@@ -113,7 +113,5 @@ public class JavaPlayerListEntryTranslator extends PacketTranslator<ServerPlayer
         if (packet.getAction() == PlayerListEntryAction.REMOVE_PLAYER || session.getUpstream().isInitialized()) {
             session.sendUpstreamPacket(translate);
         }
-
-        session.start();
     }
 }
