@@ -25,6 +25,7 @@
 
 package org.geysermc.connector.network.translators.bedrock;
 
+import com.nukkitx.protocol.bedrock.packet.PlayerListPacket;
 import org.geysermc.connector.entity.PlayerEntity;
 import org.geysermc.connector.network.session.GeyserSession;
 import org.geysermc.connector.network.translators.PacketTranslator;
@@ -40,14 +41,22 @@ public class BedrockSetLocalPlayerAsInitializedTranslator extends PacketTranslat
         if (session.getPlayerEntity().getGeyserId() == packet.getRuntimeEntityId()) {
             if (!session.getUpstream().isInitialized()) {
                 session.getUpstream().setInitialized(true);
-                session.login();
 
+                PlayerListPacket playerListPacket = new PlayerListPacket();
+                playerListPacket.setAction(PlayerListPacket.Action.ADD);
                 for (PlayerEntity entity : session.getEntityCache().getEntitiesByType(PlayerEntity.class)) {
                     if (!entity.isValid()) {
                         SkinUtils.requestAndHandleSkinAndCape(entity, session, null);
                         entity.sendPlayer(session);
                     }
+
+                    if (entity.isPlayerList()) {
+                        PlayerListPacket.Entry entry = SkinUtils.buildCachedEntry(session, entity);
+                        playerListPacket.getEntries().add(entry);
+                    }
                 }
+                session.getUpstream().sendPacket(playerListPacket);
+
             }
         }
     }
