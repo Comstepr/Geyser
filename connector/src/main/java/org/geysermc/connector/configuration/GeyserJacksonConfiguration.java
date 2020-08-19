@@ -57,6 +57,9 @@ public abstract class GeyserJacksonConfiguration implements GeyserConfiguration 
     @JsonProperty("passthrough-player-counts")
     private boolean isPassthroughPlayerCounts;
 
+    @JsonProperty("passthrough-protocol-name")
+    private boolean isPassthroughProtocolName;
+
     @JsonProperty("legacy-ping-passthrough")
     private boolean isLegacyPingPassthrough;
 
@@ -142,6 +145,9 @@ public abstract class GeyserJacksonConfiguration implements GeyserConfiguration 
         @JsonProperty("uuid")
         private String uniqueId;
     }
+
+    @JsonProperty("enable-proxy-connections")
+    private boolean enableProxyConnections = false;
 
     @JsonProperty("mtu")
     private int mtu = 1400;
