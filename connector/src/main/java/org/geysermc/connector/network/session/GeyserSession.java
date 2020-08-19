@@ -620,7 +620,7 @@ public class GeyserSession implements CommandSender {
      * @param packet the bedrock packet from the NukkitX protocol lib
      */
     public void sendUpstreamPacket(BedrockPacket packet) {
-        if (upstream != null && !upstream.isClosed()) {
+        if (upstream != null) {
             upstream.sendPacket(packet);
         } else {
             connector.getLogger().debug("Tried to send upstream packet " + packet.getClass().getSimpleName() + " but the session was null");
@@ -633,7 +633,7 @@ public class GeyserSession implements CommandSender {
      * @param packet the bedrock packet from the NukkitX protocol lib
      */
     public void sendUpstreamPacketImmediately(BedrockPacket packet) {
-        if (upstream != null && !upstream.isClosed()) {
+        if (upstream != null) {
             upstream.sendPacketImmediately(packet);
         } else {
             connector.getLogger().debug("Tried to send upstream packet " + packet.getClass().getSimpleName() + " immediately but the session was null");
