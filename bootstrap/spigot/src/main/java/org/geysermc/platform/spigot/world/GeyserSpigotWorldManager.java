@@ -25,6 +25,7 @@
 
 package org.geysermc.platform.spigot.world;
 
+import com.github.steveice10.mc.protocol.data.game.entity.player.GameMode;
 import lombok.AllArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.block.Block;
@@ -48,14 +49,10 @@ public class GeyserSpigotWorldManager extends GeyserWorldManager {
         if (session.getPlayerEntity() == null) {
             return BlockTranslator.AIR;
         }
-        if (Bukkit.getPlayer(session.getPlayerEntity().getUsername()) == null) {
-            return BlockTranslator.AIR;
-        }
         if (isLegacy) {
             return getLegacyBlock(session, x, y, z, isViaVersion);
         }
-        //TODO possibly: detect server version for all versions and use ViaVersion for block state mappings like below
-        return BlockTranslator.getJavaIdBlockMap().getOrDefault(Bukkit.getPlayer(session.getPlayerEntity().getUsername()).getWorld().getBlockAt(x, y, z).getBlockData().getAsString(), 0);
+        return BlockTranslator.getJavaIdBlockMap().get(Bukkit.getPlayer(session.getPlayerEntity().getUsername()).getWorld().getBlockAt(x, y, z).getBlockData().getAsString());
     }
 
     @SuppressWarnings("deprecation")
