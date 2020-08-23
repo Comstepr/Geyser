@@ -25,27 +25,37 @@
 
 package org.geysermc.platform.bungeecord;
 
+import net.md_5.bungee.api.config.ListenerInfo;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.ConfigurationProvider;
 import net.md_5.bungee.config.YamlConfiguration;
-
-import org.geysermc.common.PlatformType;
 import org.geysermc.connector.GeyserConnector;
-import org.geysermc.common.bootstrap.IGeyserBootstrap;
+import org.geysermc.connector.bootstrap.GeyserBootstrap;
+import org.geysermc.connector.command.CommandManager;
+import org.geysermc.connector.common.PlatformType;
+import org.geysermc.connector.configuration.GeyserConfiguration;
+import org.geysermc.connector.dump.BootstrapDumpInfo;
+import org.geysermc.connector.ping.GeyserLegacyPingPassthrough;
+import org.geysermc.connector.ping.IGeyserPingPassthrough;
+import org.geysermc.connector.utils.FileUtils;
+import org.geysermc.connector.utils.LanguageUtils;
 import org.geysermc.platform.bungeecord.command.GeyserBungeeCommandExecutor;
+import org.geysermc.platform.bungeecord.command.GeyserBungeeCommandManager;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
+import java.net.InetSocketAddress;
+import java.nio.file.Path;
 import java.util.UUID;
 import java.util.logging.Level;
 
-public class GeyserBungeePlugin extends Plugin implements IGeyserBootstrap {
+public class GeyserBungeePlugin extends Plugin implements GeyserBootstrap {
 
+    private GeyserBungeeCommandManager geyserCommandManager;
     private GeyserBungeeConfiguration geyserConfig;
     private GeyserBungeeLogger geyserLogger;
+    private IGeyserPingPassthrough geyserBungeePingPassthrough;
 
     private GeyserConnector connector;
 
@@ -54,42 +64,61 @@ public class GeyserBungeePlugin extends Plugin implements IGeyserBootstrap {
         if (!getDataFolder().exists())
             getDataFolder().mkdir();
 
-        File file = new File(getDataFolder(), "config.yml");
         Configuration configuration = null;
-
-        if (!file.exists()) {
-            try (InputStream in = getResourceAsStream("config.yml")) {
-                Files.copy(in, file.toPath());
-            } catch (IOException ex) {
-                getLogger().log(Level.SEVERE, "Failed to read/create config.yml! Make sure it's up to date and/or readable+writable!", ex);
-                return;
-            }
-        }
         try {
+            if (!getDataFolder().exists())
+                getDataFolder().mkdir();
+            File configFile = FileUtils.fileOrCopiedFromResource(new File(getDataFolder(), "config.yml"), "config.yml", (x) -> x.replaceAll("generateduuid", UUID.randomUUID().toString()));
+            this.geyserConfig = FileUtils.loadConfig(configFile, GeyserBungeeConfiguration.class);
             configuration = ConfigurationProvider.getProvider(YamlConfiguration.class).load(new File(getDataFolder(), "config.yml"));
-        } catch(IOException e) {
-            e.printStackTrace();
+        } catch (IOException ex) {
+            getLogger().log(Level.WARNING, LanguageUtils.getLocaleStringLog("geyser.config.failed"), ex);
+            ex.printStackTrace();
         }
 
-        if (configuration == null) {
-            getLogger().severe("Failed to read/create config.yml! Make sure it's up to date and/or readable+writable!");
-            return;
-        }
+        if (getProxy().getConfig().getListeners().size() == 1) {
+            ListenerInfo listener = getProxy().getConfig().getListeners().toArray(new ListenerInfo[0])[0];
 
-        this.geyserConfig = new GeyserBungeeConfiguration(getDataFolder(), configuration);
+            InetSocketAddress javaAddr = listener.getHost();
 
-        if (geyserConfig.getMetrics().getUniqueId().equals("generateduuid")) {
-            configuration.set("metrics.uuid", UUID.randomUUID().toString());
-            try {
-                ConfigurationProvider.getProvider(YamlConfiguration.class).save(configuration, new File(getDataFolder(), "config.yml"));
-            } catch (IOException ex) {
-                getLogger().log(Level.SEVERE, "Failed to read/create config.yml! Make sure it's up to date and/or readable+writable!", ex);
-                return;
+            // By default this should be localhost but may need to be changed in some circumstances
+            if (this.geyserConfig.getRemote().getAddress().equalsIgnoreCase("auto")) {
+                this.geyserConfig.setAutoconfiguredRemote(true);
+                // Don't use localhost if not listening on all interfaces
+                if (!javaAddr.getHostString().equals("0.0.0.0") && !javaAddr.getHostString().equals("")) {
+                    this.geyserConfig.getRemote().setAddress(javaAddr.getHostString());
+                }
+                this.geyserConfig.getRemote().setPort(javaAddr.getPort());
+            }
+
+            if (geyserConfig.getBedrock().isCloneRemotePort()) {
+                geyserConfig.getBedrock().setPort(javaAddr.getPort());
             }
         }
 
         this.geyserLogger = new GeyserBungeeLogger(getLogger(), geyserConfig.isDebugMode());
+        GeyserConfiguration.checkGeyserConfiguration(geyserConfig, geyserLogger);
+
+        if (geyserConfig.getRemote().getAuthType().equals("floodgate") && getProxy().getPluginManager().getPlugin("floodgate-bungee") == null) {
+            geyserLogger.severe(LanguageUtils.getLocaleStringLog("geyser.bootstrap.floodgate.not_installed") + " " + LanguageUtils.getLocaleStringLog("geyser.bootstrap.floodgate.disabling"));
+            return;
+        } else if (geyserConfig.isAutoconfiguredRemote() && getProxy().getPluginManager().getPlugin("floodgate-bungee") != null) {
+            // Floodgate installed means that the user wants Floodgate authentication
+            geyserLogger.debug("Auto-setting to Floodgate authentication.");
+            geyserConfig.getRemote().setAuthType("floodgate");
+        }
+
+        geyserConfig.loadFloodgate(this, configuration);
+
         this.connector = GeyserConnector.start(PlatformType.BUNGEECORD, this);
+
+        this.geyserCommandManager = new GeyserBungeeCommandManager(connector);
+
+        if (geyserConfig.isLegacyPingPassthrough()) {
+            this.geyserBungeePingPassthrough = GeyserLegacyPingPassthrough.init(connector);
+        } else {
+            this.geyserBungeePingPassthrough = new GeyserBungeePingPassthrough(getProxy());
+        }
 
         this.getProxy().getPluginManager().registerCommand(this, new GeyserBungeeCommandExecutor(connector));
     }
@@ -107,5 +136,25 @@ public class GeyserBungeePlugin extends Plugin implements IGeyserBootstrap {
     @Override
     public GeyserBungeeLogger getGeyserLogger() {
         return geyserLogger;
+    }
+
+    @Override
+    public CommandManager getGeyserCommandManager() {
+        return this.geyserCommandManager;
+    }
+
+    @Override
+    public IGeyserPingPassthrough getGeyserPingPassthrough() {
+        return geyserBungeePingPassthrough;
+    }
+
+    @Override
+    public Path getConfigFolder() {
+        return getDataFolder().toPath();
+    }
+
+    @Override
+    public BootstrapDumpInfo getDumpInfo() {
+        return new GeyserBungeeDumpInfo(getProxy());
     }
 }

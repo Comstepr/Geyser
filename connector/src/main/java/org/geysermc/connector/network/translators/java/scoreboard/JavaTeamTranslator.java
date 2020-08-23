@@ -25,54 +25,66 @@
 
 package org.geysermc.connector.network.translators.java.scoreboard;
 
-import java.util.Arrays;
-import java.util.Set;
-
+import com.github.steveice10.mc.protocol.packet.ingame.server.scoreboard.ServerTeamPacket;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import org.geysermc.connector.GeyserConnector;
 import org.geysermc.connector.network.session.GeyserSession;
 import org.geysermc.connector.network.translators.PacketTranslator;
 import org.geysermc.connector.network.translators.Translator;
 import org.geysermc.connector.scoreboard.Scoreboard;
+import org.geysermc.connector.scoreboard.Team;
 import org.geysermc.connector.scoreboard.UpdateType;
+import org.geysermc.connector.utils.LanguageUtils;
 import org.geysermc.connector.utils.MessageUtils;
 
-import com.github.steveice10.mc.protocol.packet.ingame.server.scoreboard.ServerTeamPacket;
-
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import java.util.Arrays;
+import java.util.Set;
 
 @Translator(packet = ServerTeamPacket.class)
 public class JavaTeamTranslator extends PacketTranslator<ServerTeamPacket> {
 
     @Override
     public void translate(ServerTeamPacket packet, GeyserSession session) {
-        GeyserConnector.getInstance().getLogger().debug("Team packet " + packet.getTeamName() + " " + packet.getAction()+" "+ Arrays.toString(packet.getPlayers()));
+        GeyserConnector.getInstance().getLogger().debug("Team packet " + packet.getTeamName() + " " + packet.getAction() + " " + Arrays.toString(packet.getPlayers()));
 
-        Scoreboard scoreboard = session.getScoreboardCache().getScoreboard();
+        Scoreboard scoreboard = session.getWorldCache().getScoreboard();
+        Team team = scoreboard.getTeam(packet.getTeamName());
         switch (packet.getAction()) {
             case CREATE:
                 scoreboard.registerNewTeam(packet.getTeamName(), toPlayerSet(packet.getPlayers()))
                         .setName(MessageUtils.getBedrockMessage(packet.getDisplayName()))
                         .setColor(packet.getColor())
-                        .setPrefix(MessageUtils.getBedrockMessage(packet.getPrefix()))
-                        .setSuffix(MessageUtils.getBedrockMessage(packet.getSuffix()));
+                        .setPrefix(MessageUtils.getTranslatedBedrockMessage(packet.getPrefix(), session.getClientData().getLanguageCode()))
+                        .setSuffix(MessageUtils.getTranslatedBedrockMessage(packet.getSuffix(), session.getClientData().getLanguageCode()));
                 break;
             case UPDATE:
-                scoreboard.getTeam(packet.getTeamName())
-                        .setName(MessageUtils.getBedrockMessage(packet.getDisplayName()))
-                        .setColor(packet.getColor())
-                        .setPrefix(MessageUtils.getBedrockMessage(packet.getPrefix()))
-                        .setSuffix(MessageUtils.getBedrockMessage(packet.getSuffix()))
-                        .setUpdateType(UpdateType.UPDATE);
+                if (team != null) {
+                    team.setName(MessageUtils.getBedrockMessage(packet.getDisplayName()))
+                            .setColor(packet.getColor())
+                            .setPrefix(MessageUtils.getTranslatedBedrockMessage(packet.getPrefix(), session.getClientData().getLanguageCode()))
+                            .setSuffix(MessageUtils.getTranslatedBedrockMessage(packet.getSuffix(), session.getClientData().getLanguageCode()))
+                            .setUpdateType(UpdateType.UPDATE);
+                } else {
+                    GeyserConnector.getInstance().getLogger().debug(LanguageUtils.getLocaleStringLog("geyser.network.translator.team.failed_not_registered", packet.getAction(), packet.getTeamName()));
+                }
                 break;
             case ADD_PLAYER:
-                scoreboard.getTeam(packet.getTeamName()).addEntities(packet.getPlayers());
+                if (team != null) {
+                    team.addEntities(packet.getPlayers());
+                } else {
+                    GeyserConnector.getInstance().getLogger().debug(LanguageUtils.getLocaleStringLog("geyser.network.translator.team.failed_not_registered", packet.getAction(), packet.getTeamName()));
+                }
                 break;
             case REMOVE_PLAYER:
-                scoreboard.getTeam(packet.getTeamName()).removeEntities(packet.getPlayers());
+                if (team != null) {
+                    team.removeEntities(packet.getPlayers());
+                } else {
+                    GeyserConnector.getInstance().getLogger().debug(LanguageUtils.getLocaleStringLog("geyser.network.translator.team.failed_not_registered", packet.getAction(), packet.getTeamName()));
+                }
                 break;
             case REMOVE:
-               scoreboard.removeTeam(packet.getTeamName());
-               break;
+                scoreboard.removeTeam(packet.getTeamName());
+                break;
         }
         scoreboard.onUpdate();
     }

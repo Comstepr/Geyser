@@ -25,105 +25,121 @@
 
 package org.geysermc.connector.network.translators.java.world;
 
-import java.util.Set;
-import java.util.concurrent.ThreadLocalRandom;
-
-import org.geysermc.connector.entity.Entity;
-import org.geysermc.connector.network.session.GeyserSession;
-import org.geysermc.connector.network.translators.PacketTranslator;
-import org.geysermc.connector.network.translators.Translator;
-
 import com.github.steveice10.mc.protocol.data.game.ClientRequest;
 import com.github.steveice10.mc.protocol.data.game.entity.player.GameMode;
 import com.github.steveice10.mc.protocol.data.game.world.notify.EnterCreditsValue;
+import com.github.steveice10.mc.protocol.data.game.world.notify.RainStrengthValue;
+import com.github.steveice10.mc.protocol.data.game.world.notify.RespawnScreenValue;
+import com.github.steveice10.mc.protocol.data.game.world.notify.ThunderStrengthValue;
 import com.github.steveice10.mc.protocol.packet.ingame.client.ClientRequestPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.world.ServerNotifyClientPacket;
 import com.nukkitx.math.vector.Vector3f;
-import com.nukkitx.protocol.bedrock.data.EntityDataMap;
-import com.nukkitx.protocol.bedrock.data.EntityFlag;
+import com.nukkitx.protocol.bedrock.data.GameRuleData;
 import com.nukkitx.protocol.bedrock.data.LevelEventType;
-import com.nukkitx.protocol.bedrock.data.PlayerPermission;
-import com.nukkitx.protocol.bedrock.packet.AdventureSettingsPacket;
-import com.nukkitx.protocol.bedrock.packet.LevelEventPacket;
-import com.nukkitx.protocol.bedrock.packet.SetEntityDataPacket;
-import com.nukkitx.protocol.bedrock.packet.SetPlayerGameTypePacket;
-import com.nukkitx.protocol.bedrock.packet.ShowCreditsPacket;
-
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import com.nukkitx.protocol.bedrock.data.entity.EntityEventType;
+import com.nukkitx.protocol.bedrock.packet.*;
+import org.geysermc.connector.entity.PlayerEntity;
+import org.geysermc.connector.network.session.GeyserSession;
+import org.geysermc.connector.network.translators.PacketTranslator;
+import org.geysermc.connector.network.translators.Translator;
+import org.geysermc.connector.network.translators.inventory.PlayerInventoryTranslator;
 
 @Translator(packet = ServerNotifyClientPacket.class)
 public class JavaNotifyClientTranslator extends PacketTranslator<ServerNotifyClientPacket> {
 
     @Override
     public void translate(ServerNotifyClientPacket packet, GeyserSession session) {
-        Entity entity = session.getPlayerEntity();
+        PlayerEntity entity = session.getPlayerEntity();
         if (entity == null)
             return;
 
         switch (packet.getNotification()) {
             case START_RAIN:
                 LevelEventPacket startRainPacket = new LevelEventPacket();
-                startRainPacket.setType(LevelEventType.START_RAIN);
-                startRainPacket.setData(ThreadLocalRandom.current().nextInt(50000) + 10000);
+                startRainPacket.setType(LevelEventType.START_RAINING);
+                startRainPacket.setData(Integer.MAX_VALUE);
                 startRainPacket.setPosition(Vector3f.ZERO);
-                session.getUpstream().sendPacket(startRainPacket);
+                session.sendUpstreamPacket(startRainPacket);
+                session.setRaining(true);
                 break;
             case STOP_RAIN:
                 LevelEventPacket stopRainPacket = new LevelEventPacket();
-                stopRainPacket.setType(LevelEventType.STOP_RAIN);
-                stopRainPacket.setData(ThreadLocalRandom.current().nextInt(50000) + 10000);
+                stopRainPacket.setType(LevelEventType.STOP_RAINING);
+                stopRainPacket.setData(0);
                 stopRainPacket.setPosition(Vector3f.ZERO);
-                session.getUpstream().sendPacket(stopRainPacket);
+                session.sendUpstreamPacket(stopRainPacket);
+                session.setRaining(false);
+                break;
+            case RAIN_STRENGTH:
+                // While the above values are used, they CANNOT BE TRUSTED on a vanilla server as they are swapped around
+                // Spigot and forks implement it correctly
+                // Rain strength is your best way for determining if there is any rain
+                RainStrengthValue value = (RainStrengthValue) packet.getValue();
+                boolean isCurrentlyRaining = value.getStrength() > 0f;
+                // Java sends the rain level. Bedrock doesn't care, so we don't care if it's already raining.
+                if (isCurrentlyRaining != session.isRaining()) {
+                    LevelEventPacket changeRainPacket = new LevelEventPacket();
+                    changeRainPacket.setType(isCurrentlyRaining ? LevelEventType.START_RAINING : LevelEventType.STOP_RAINING);
+                    changeRainPacket.setData(Integer.MAX_VALUE); // Dunno what this does; used to be implemented with ThreadLocalRandom
+                    changeRainPacket.setPosition(Vector3f.ZERO);
+                    session.sendUpstreamPacket(changeRainPacket);
+                    session.setRaining(isCurrentlyRaining);
+                }
+                break;
+            case THUNDER_STRENGTH:
+                // See above, same process
+                ThunderStrengthValue thunderValue = (ThunderStrengthValue) packet.getValue();
+                boolean isCurrentlyThundering = thunderValue.getStrength() > 0f;
+                if (isCurrentlyThundering != session.isThunder()) {
+                    LevelEventPacket changeThunderPacket = new LevelEventPacket();
+                    changeThunderPacket.setType(isCurrentlyThundering ? LevelEventType.START_THUNDERSTORM : LevelEventType.STOP_THUNDERSTORM);
+                    changeThunderPacket.setData(Integer.MAX_VALUE);
+                    changeThunderPacket.setPosition(Vector3f.ZERO);
+                    session.sendUpstreamPacket(changeThunderPacket);
+                    session.setThunder(isCurrentlyThundering);
+                }
                 break;
             case CHANGE_GAMEMODE:
-                Set<AdventureSettingsPacket.Flag> playerFlags = new ObjectOpenHashSet<>();
                 GameMode gameMode = (GameMode) packet.getValue();
-                if (gameMode == GameMode.ADVENTURE)
-                    playerFlags.add(AdventureSettingsPacket.Flag.IMMUTABLE_WORLD);
 
-                if (gameMode == GameMode.CREATIVE)
-                    playerFlags.add(AdventureSettingsPacket.Flag.MAY_FLY);
-
-                if (gameMode == GameMode.SPECTATOR) {
-                    playerFlags.add(AdventureSettingsPacket.Flag.MAY_FLY);
-                    playerFlags.add(AdventureSettingsPacket.Flag.NO_CLIP);
-                    playerFlags.add(AdventureSettingsPacket.Flag.FLYING);
-                }
-
-                playerFlags.add(AdventureSettingsPacket.Flag.AUTO_JUMP);
+                session.setNoClip(gameMode == GameMode.SPECTATOR);
+                session.setWorldImmutable(gameMode == GameMode.ADVENTURE || gameMode == GameMode.SPECTATOR);
+                session.sendAdventureSettings();
 
                 SetPlayerGameTypePacket playerGameTypePacket = new SetPlayerGameTypePacket();
                 playerGameTypePacket.setGamemode(gameMode.ordinal());
-                session.getUpstream().sendPacket(playerGameTypePacket);
+                session.sendUpstreamPacket(playerGameTypePacket);
                 session.setGameMode(gameMode);
 
-                AdventureSettingsPacket adventureSettingsPacket = new AdventureSettingsPacket();
-                adventureSettingsPacket.setPlayerPermission(PlayerPermission.MEMBER);
-                adventureSettingsPacket.setUniqueEntityId(entity.getGeyserId());
-                adventureSettingsPacket.getFlags().addAll(playerFlags);
-                session.getUpstream().sendPacket(adventureSettingsPacket);
-
-                EntityDataMap metadata = entity.getMetadata();
-                metadata.getFlags().setFlag(EntityFlag.CAN_FLY, gameMode == GameMode.CREATIVE || gameMode == GameMode.SPECTATOR);
-
-                SetEntityDataPacket entityDataPacket = new SetEntityDataPacket();
-                entityDataPacket.setRuntimeEntityId(entity.getGeyserId());
-                entityDataPacket.getMetadata().putAll(metadata);
-                session.getUpstream().sendPacket(entityDataPacket);
+                // Update the crafting grid to add/remove barriers for creative inventory
+                PlayerInventoryTranslator.updateCraftingGrid(session, session.getInventory());
                 break;
             case ENTER_CREDITS:
                 switch ((EnterCreditsValue) packet.getValue()) {
                     case SEEN_BEFORE:
                         ClientRequestPacket javaRespawnPacket = new ClientRequestPacket(ClientRequest.RESPAWN);
-                        session.getDownstream().getSession().send(javaRespawnPacket);
+                        session.sendDownstreamPacket(javaRespawnPacket);
                         break;
                     case FIRST_TIME:
                         ShowCreditsPacket showCreditsPacket = new ShowCreditsPacket();
                         showCreditsPacket.setStatus(ShowCreditsPacket.Status.START_CREDITS);
                         showCreditsPacket.setRuntimeEntityId(entity.getGeyserId());
-                        session.getUpstream().sendPacket(showCreditsPacket);
+                        session.sendUpstreamPacket(showCreditsPacket);
                         break;
                 }
+                break;
+            case AFFECTED_BY_ELDER_GUARDIAN:
+                EntityEventPacket eventPacket = new EntityEventPacket();
+                eventPacket.setType(EntityEventType.ELDER_GUARDIAN_CURSE);
+                eventPacket.setData(0);
+                eventPacket.setRuntimeEntityId(entity.getGeyserId());
+                session.sendUpstreamPacket(eventPacket);
+                break;
+            case ENABLE_RESPAWN_SCREEN:
+                GameRulesChangedPacket gamerulePacket = new GameRulesChangedPacket();
+                gamerulePacket.getGameRules().add(new GameRuleData<>("doimmediaterespawn",
+                        packet.getValue() == RespawnScreenValue.IMMEDIATE_RESPAWN));
+                session.sendUpstreamPacket(gamerulePacket);
                 break;
             default:
                 break;

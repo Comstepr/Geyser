@@ -26,15 +26,21 @@
 package org.geysermc.platform.sponge;
 
 import com.google.inject.Inject;
-
+import ninja.leaping.configurate.ConfigurationNode;
 import ninja.leaping.configurate.loader.ConfigurationLoader;
 import ninja.leaping.configurate.yaml.YAMLConfigurationLoader;
-
-import org.geysermc.common.PlatformType;
-import org.geysermc.common.bootstrap.IGeyserBootstrap;
 import org.geysermc.connector.GeyserConnector;
+import org.geysermc.connector.bootstrap.GeyserBootstrap;
+import org.geysermc.connector.command.CommandManager;
+import org.geysermc.connector.common.PlatformType;
+import org.geysermc.connector.configuration.GeyserConfiguration;
+import org.geysermc.connector.dump.BootstrapDumpInfo;
+import org.geysermc.connector.ping.GeyserLegacyPingPassthrough;
+import org.geysermc.connector.ping.IGeyserPingPassthrough;
 import org.geysermc.connector.utils.FileUtils;
+import org.geysermc.connector.utils.LanguageUtils;
 import org.geysermc.platform.sponge.command.GeyserSpongeCommandExecutor;
+import org.geysermc.platform.sponge.command.GeyserSpongeCommandManager;
 import org.slf4j.Logger;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.config.ConfigDir;
@@ -45,10 +51,12 @@ import org.spongepowered.api.plugin.Plugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.file.Path;
 import java.util.UUID;
 
 @Plugin(id = "geyser", name = GeyserConnector.NAME + "-Sponge", version = GeyserConnector.VERSION, url = "https://geysermc.org", authors = "GeyserMC")
-public class GeyserSpongePlugin implements IGeyserBootstrap {
+public class GeyserSpongePlugin implements GeyserBootstrap {
 
     @Inject
     private Logger logger;
@@ -57,8 +65,10 @@ public class GeyserSpongePlugin implements IGeyserBootstrap {
     @ConfigDir(sharedRoot = false)
     private File configDir;
 
+    private GeyserSpongeCommandManager geyserCommandManager;
     private GeyserSpongeConfiguration geyserConfig;
     private GeyserSpongeLogger geyserLogger;
+    private IGeyserPingPassthrough geyserSpongePingPassthrough;
 
     private GeyserConnector connector;
 
@@ -71,22 +81,51 @@ public class GeyserSpongePlugin implements IGeyserBootstrap {
         try {
             configFile = FileUtils.fileOrCopiedFromResource(new File(configDir, "config.yml"), "config.yml", (file) -> file.replaceAll("generateduuid", UUID.randomUUID().toString()));
         } catch (IOException ex) {
-            logger.warn("Failed to copy config.yml from jar path!");
+            logger.warn(LanguageUtils.getLocaleStringLog("geyser.config.failed"));
             ex.printStackTrace();
         }
 
         ConfigurationLoader loader = YAMLConfigurationLoader.builder().setPath(configFile.toPath()).build();
+        ConfigurationNode config;
         try {
-            this.geyserConfig = new GeyserSpongeConfiguration(configDir, loader.load());
+            config = loader.load();
+            this.geyserConfig = new GeyserSpongeConfiguration(configDir, config);
         } catch (IOException ex) {
-            logger.warn("Failed to load config.yml!");
+            logger.warn(LanguageUtils.getLocaleStringLog("geyser.config.failed"));
             ex.printStackTrace();
             return;
         }
 
+        ConfigurationNode serverIP = config.getNode("remote").getNode("address");
+        ConfigurationNode serverPort = config.getNode("remote").getNode("port");
+
+        if (Sponge.getServer().getBoundAddress().isPresent()) {
+            InetSocketAddress javaAddr = Sponge.getServer().getBoundAddress().get();
+
+            // Don't change the ip if its listening on all interfaces
+            // By default this should be 127.0.0.1 but may need to be changed in some circumstances
+            if (this.geyserConfig.getRemote().getAddress().equalsIgnoreCase("auto")) {
+                this.geyserConfig.setAutoconfiguredRemote(true);
+                serverPort.setValue(javaAddr.getPort());
+            }
+        }
+
+        ConfigurationNode bedrockPort = config.getNode("bedrock").getNode("port");
+        if (geyserConfig.getBedrock().isCloneRemotePort()){
+            bedrockPort.setValue(serverPort.getValue());
+        }
+
         this.geyserLogger = new GeyserSpongeLogger(logger, geyserConfig.isDebugMode());
+        GeyserConfiguration.checkGeyserConfiguration(geyserConfig, geyserLogger);
         this.connector = GeyserConnector.start(PlatformType.SPONGE, this);
 
+        if (geyserConfig.isLegacyPingPassthrough()) {
+            this.geyserSpongePingPassthrough = GeyserLegacyPingPassthrough.init(connector);
+        } else {
+            this.geyserSpongePingPassthrough = new GeyserSpongePingPassthrough();
+        }
+
+        this.geyserCommandManager = new GeyserSpongeCommandManager(Sponge.getCommandManager(), connector);
         Sponge.getCommandManager().register(this, new GeyserSpongeCommandExecutor(connector), "geyser");
     }
 
@@ -105,6 +144,21 @@ public class GeyserSpongePlugin implements IGeyserBootstrap {
         return geyserLogger;
     }
 
+    @Override
+    public CommandManager getGeyserCommandManager() {
+        return this.geyserCommandManager;
+    }
+
+    @Override
+    public IGeyserPingPassthrough getGeyserPingPassthrough() {
+        return geyserSpongePingPassthrough;
+    }
+
+    @Override
+    public Path getConfigFolder() {
+        return configDir.toPath();
+    }
+
     @Listener
     public void onServerStart(GameStartedServerEvent event) {
         onEnable();
@@ -113,5 +167,10 @@ public class GeyserSpongePlugin implements IGeyserBootstrap {
     @Listener
     public void onServerStop(GameStoppedEvent event) {
         onDisable();
+    }
+
+    @Override
+    public BootstrapDumpInfo getDumpInfo() {
+        return new GeyserSpongeDumpInfo();
     }
 }
