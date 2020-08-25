@@ -25,13 +25,21 @@ jobs:
         run: mvn -B package
       - name: Copy file to home directory
         run: mv bootstrap/spigot/target/Geyser-Spigot.jar ./
+      - name: Copy BungeeCord to home directory
+        run: mv bootstrap/bungeecord/target/Geyser-BungeeCord.jar ./
+      - name: Archive artifacts (BungeeCord)
+        uses: actions/upload-artifact@v2
+        if: success()
+        with:
+          name: Geyser-Spigot
+          path: ./Geyser-BungeeCord.jar
       - name: Archive artifacts (Spigot)
         uses: actions/upload-artifact@v2
         if: success()
         with:
           name: Geyser-Spigot
           path: ./Geyser-Spigot.jar
-      - name: Push
+      - name: Push (Spigot)
         uses: github-actions-x/commit@v2.6
         if: success()
         with:
@@ -40,4 +48,14 @@ jobs:
           commit-message: 'Publish JAR file'
           force-add: 'true'
           files: ./Geyser-Spigot.jar
+          name: GHActions
+      - name: Push (BungeeCord)
+        uses: github-actions-x/commit@v2.6
+        if: success()
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          push-branch: 'master'
+          commit-message: 'Publish JAR file'
+          force-add: 'true'
+          files: ./Geyser-BungeeCord.jar
           name: GHActions
