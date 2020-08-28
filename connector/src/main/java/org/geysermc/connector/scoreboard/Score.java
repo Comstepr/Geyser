@@ -25,63 +25,40 @@
 
 package org.geysermc.connector.scoreboard;
 
-import com.nukkitx.protocol.bedrock.data.ScoreInfo;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
-@Getter
+@Getter @Setter
 @Accessors(chain = true)
 public class Score {
-    private final Objective objective;
-    private ScoreInfo cachedInfo;
-    private final long id;
+    private Objective objective;
+    private long id;
 
-    @Setter
     private UpdateType updateType = UpdateType.ADD;
-    private final String name;
+    private String name;
     private Team team;
     private int score;
-    @Setter
     private int oldScore = Integer.MIN_VALUE;
 
     public Score(Objective objective, String name) {
         this.id = objective.getScoreboard().getNextId().getAndIncrement();
         this.objective = objective;
         this.name = name;
-        update();
     }
 
     public String getDisplayName() {
-        if (team != null) {
+        if (team != null && team.getUpdateType() != UpdateType.REMOVE) {
             return team.getPrefix() + name + team.getSuffix();
         }
         return name;
     }
 
     public Score setScore(int score) {
+        if (oldScore == Integer.MIN_VALUE) {
+            this.oldScore = score;
+        }
         this.score = score;
-        updateType = UpdateType.UPDATE;
         return this;
-    }
-
-    public Score setTeam(Team team) {
-        if (this.team != null && team != null) {
-            if (!this.team.equals(team)) {
-                this.team = team;
-                updateType = UpdateType.UPDATE;
-            }
-            return this;
-        }
-        // simplified from (this.team != null && team == null) || (this.team == null && team != null)
-        if (this.team != null || team != null) {
-            this.team = team;
-            updateType = UpdateType.UPDATE;
-        }
-        return this;
-    }
-
-    public void update() {
-        cachedInfo = new ScoreInfo(id, objective.getObjectiveName(), score, getDisplayName());
     }
 }

@@ -26,16 +26,15 @@
 package org.geysermc.platform.sponge;
 
 import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
+
 import org.geysermc.connector.GeyserLogger;
 import org.slf4j.Logger;
 
 @AllArgsConstructor
 public class GeyserSpongeLogger implements GeyserLogger {
-    private final Logger logger;
-    @Getter @Setter
-    private boolean debug;
+
+    private Logger logger;
+    private boolean debugMode;
 
     @Override
     public void severe(String message) {
@@ -69,8 +68,12 @@ public class GeyserSpongeLogger implements GeyserLogger {
 
     @Override
     public void debug(String message) {
-        if (debug) {
+        if (debugMode)
             info(message);
-        }
+    }
+
+    @Override
+    public void setDebug(boolean debugMode) {
+        this.debugMode = debugMode;
     }
 }
