@@ -29,24 +29,23 @@ import com.github.steveice10.mc.protocol.data.game.scoreboard.ScoreboardPosition
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Getter
 public class Objective {
-    private final Scoreboard scoreboard;
-    private final long id;
-    private boolean active = true;
+    private Scoreboard scoreboard;
+    private long id;
+    private boolean temp;
 
     @Setter
     private UpdateType updateType = UpdateType.ADD;
     private String objectiveName;
-    private ScoreboardPosition displaySlot;
-    private String displaySlotName;
+    private String displaySlot;
     private String displayName = "unknown";
     private int type = 0; // 0 = integer, 1 = heart
 
-    private Map<String, Score> scores = new ConcurrentHashMap<>();
+    private Map<String, Score> scores = new HashMap<>();
 
     private Objective(Scoreboard scoreboard) {
         this.id = scoreboard.getNextId().getAndIncrement();
@@ -55,21 +54,23 @@ public class Objective {
 
     /**
      * /!\ This method is made for temporary objectives until the real objective is received
-     *
-     * @param scoreboard    the scoreboard
+     * @param scoreboard the scoreboard
      * @param objectiveName the name of the objective
      */
     public Objective(Scoreboard scoreboard, String objectiveName) {
         this(scoreboard);
         this.objectiveName = objectiveName;
-        this.active = false;
+        this.temp = true;
     }
 
     public Objective(Scoreboard scoreboard, String objectiveName, ScoreboardPosition displaySlot, String displayName, int type) {
+        this(scoreboard, objectiveName, displaySlot.name().toLowerCase(), displayName, type);
+    }
+
+    public Objective(Scoreboard scoreboard, String objectiveName, String displaySlot, String displayName, int type) {
         this(scoreboard);
         this.objectiveName = objectiveName;
         this.displaySlot = displaySlot;
-        this.displaySlotName = displaySlot.name().toLowerCase();
         this.displayName = displayName;
         this.type = type;
     }
@@ -86,9 +87,21 @@ public class Objective {
     public void setScore(String id, int score) {
         if (scores.containsKey(id)) {
             scores.get(id).setScore(score).setUpdateType(UpdateType.ADD);
-            return;
+        } else {
+            registerScore(id, score);
         }
-        registerScore(id, score);
+    }
+
+    public void setScoreText(String oldText, String newText) {
+        if (!scores.containsKey(oldText) || oldText.equals(newText)) return;
+        Score oldScore = scores.get(oldText);
+
+        Score newScore = new Score(this, newText)
+                .setScore(oldScore.getScore())
+                .setTeam(scoreboard.getTeamFor(newText));
+
+        scores.put(newText, newScore);
+        oldScore.setUpdateType(UpdateType.REMOVE);
     }
 
     public int getScore(String id) {
@@ -100,58 +113,37 @@ public class Objective {
 
     public Score getScore(int line) {
         for (Score score : scores.values()) {
-            if (score.getScore() == line) {
-                return score;
-            }
+            if (score.getScore() == line) return score;
         }
         return null;
     }
 
-    public void removeScore(String id) {
+    public void resetScore(String id) {
         if (scores.containsKey(id)) {
             scores.get(id).setUpdateType(UpdateType.REMOVE);
         }
     }
 
-    /**
-     * Used internally to remove a score from the score map
-     */
-    public void removeScore0(String id) {
+    public void removeScore(String id) {
         scores.remove(id);
     }
 
     public Objective setDisplayName(String displayName) {
         this.displayName = displayName;
-        if (updateType == UpdateType.NOTHING) {
-            updateType = UpdateType.UPDATE;
-        }
+        if (updateType == UpdateType.NOTHING) updateType = UpdateType.UPDATE;
         return this;
     }
 
     public Objective setType(int type) {
         this.type = type;
-        if (updateType == UpdateType.NOTHING) {
-            updateType = UpdateType.UPDATE;
-        }
+        if (updateType == UpdateType.NOTHING) updateType = UpdateType.UPDATE;
         return this;
     }
 
-    public void setActive(ScoreboardPosition displaySlot) {
-        if (!active) {
-            active = true;
-            this.displaySlot = displaySlot;
-            this.displaySlotName = displaySlot.name().toLowerCase();
+    public void removeTemp(ScoreboardPosition displaySlot) {
+        if (temp) {
+            temp = false;
+            this.displaySlot = displaySlot.name().toLowerCase();
         }
-    }
-
-    public boolean isSidebar() {
-        if (displaySlot != null) {
-            return displaySlot != ScoreboardPosition.BELOW_NAME && displaySlot != ScoreboardPosition.PLAYER_LIST;
-        }
-        return false;
-    }
-
-    public void removed() {
-        scores = null;
     }
 }

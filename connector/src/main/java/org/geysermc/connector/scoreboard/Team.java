@@ -35,7 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-@Getter @Setter
+@Getter
+@Setter
 @Accessors(chain = true)
 public class Team {
     private final Scoreboard scoreboard;
@@ -56,7 +57,8 @@ public class Team {
     public void addEntities(String... names) {
         List<String> added = new ArrayList<>();
         for (String name : names) {
-            if (entities.add(name)) {
+            if (!entities.contains(name)) {
+                entities.add(name);
                 added.add(name);
             }
         }
@@ -75,14 +77,5 @@ public class Team {
             entities.remove(name);
         }
         setUpdateType(UpdateType.UPDATE);
-    }
-
-    public boolean hasEntity(String name) {
-        return entities.contains(name);
-    }
-
-    @Override
-    public int hashCode() {
-        return id.hashCode();
     }
 }
