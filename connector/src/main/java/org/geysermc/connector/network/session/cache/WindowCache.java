@@ -66,7 +66,7 @@ public class WindowCache {
         formRequestPacket.setFormId(id);
         formRequestPacket.setFormData(windows.get(id).getJSONData());
 
-        session.sendUpstreamPacket(formRequestPacket);
+        session.getUpstream().sendPacket(formRequestPacket);
     }
 
     public void showWindow(FormWindow window, int id) {
@@ -74,7 +74,7 @@ public class WindowCache {
         formRequestPacket.setFormId(id);
         formRequestPacket.setFormData(window.getJSONData());
 
-        session.sendUpstreamPacket(formRequestPacket);
+        session.getUpstream().sendPacket(formRequestPacket);
 
         addWindow(window, id);
     }

@@ -34,7 +34,6 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import lombok.Getter;
 
 import org.geysermc.connector.network.session.GeyserSession;
-import org.geysermc.connector.utils.LanguageUtils;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -79,7 +78,7 @@ public class Scoreboard {
 
     public Team registerNewTeam(String teamName, Set<String> players) {
         if (teams.containsKey(teamName)) {
-            session.getConnector().getLogger().info(LanguageUtils.getLocaleStringLog("geyser.network.translator.team.failed_overrides", teamName));
+            session.getConnector().getLogger().info("Ignoring team " + teamName + ". It overrides without removing old team.");
             return getTeam(teamName);
         }
 
@@ -188,7 +187,7 @@ public class Scoreboard {
             if (objective.getUpdateType() == REMOVE || update) {
                 RemoveObjectivePacket removeObjectivePacket = new RemoveObjectivePacket();
                 removeObjectivePacket.setObjectiveId(objective.getObjectiveName());
-                session.sendUpstreamPacket(removeObjectivePacket);
+                session.getUpstream().sendPacket(removeObjectivePacket);
                 if (objective.getUpdateType() == REMOVE) {
                     objectives.remove(objective.getObjectiveName()); // now we can deregister
                 }
@@ -200,7 +199,7 @@ public class Scoreboard {
                 displayObjectivePacket.setCriteria("dummy");
                 displayObjectivePacket.setDisplaySlot(objective.getDisplaySlot());
                 displayObjectivePacket.setSortOrder(1); // ??
-                session.sendUpstreamPacket(displayObjectivePacket);
+                session.getUpstream().sendPacket(displayObjectivePacket);
             }
             objective.setUpdateType(NOTHING);
         }
@@ -209,21 +208,21 @@ public class Scoreboard {
             SetScorePacket setScorePacket = new SetScorePacket();
             setScorePacket.setAction(SetScorePacket.Action.REMOVE);
             setScorePacket.setInfos(removeScores);
-            session.sendUpstreamPacket(setScorePacket);
+            session.getUpstream().sendPacket(setScorePacket);
         }
 
         if (!addScores.isEmpty()) {
             SetScorePacket setScorePacket = new SetScorePacket();
             setScorePacket.setAction(SetScorePacket.Action.SET);
             setScorePacket.setInfos(addScores);
-            session.sendUpstreamPacket(setScorePacket);
+            session.getUpstream().sendPacket(setScorePacket);
         }
     }
 
     public void despawnObjective(Objective objective) {
         RemoveObjectivePacket removeObjectivePacket = new RemoveObjectivePacket();
         removeObjectivePacket.setObjectiveId(objective.getObjectiveName());
-        session.sendUpstreamPacket(removeObjectivePacket);
+        session.getUpstream().sendPacket(removeObjectivePacket);
         objectives.remove(objective.getDisplayName());
 
         List<ScoreInfo> toRemove = new ArrayList<>();
@@ -239,7 +238,7 @@ public class Scoreboard {
             SetScorePacket setScorePacket = new SetScorePacket();
             setScorePacket.setAction(SetScorePacket.Action.REMOVE);
             setScorePacket.setInfos(toRemove);
-            session.sendUpstreamPacket(setScorePacket);
+            session.getUpstream().sendPacket(setScorePacket);
         }
     }
 

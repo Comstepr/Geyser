@@ -30,29 +30,35 @@ import com.github.steveice10.mc.protocol.packet.ingame.server.world.ServerUpdate
 import org.geysermc.connector.network.session.GeyserSession;
 import org.geysermc.connector.network.translators.PacketTranslator;
 import org.geysermc.connector.network.translators.Translator;
-import org.geysermc.connector.network.translators.world.block.entity.BlockEntityTranslator;
+import org.geysermc.connector.network.translators.block.entity.BlockEntity;
+import org.geysermc.connector.network.translators.block.entity.BlockEntityTranslator;
 import org.geysermc.connector.utils.BlockEntityUtils;
 import org.geysermc.connector.utils.ChunkUtils;
+
+import java.util.concurrent.TimeUnit;
 
 @Translator(packet = ServerUpdateTileEntityPacket.class)
 public class JavaUpdateTileEntityTranslator extends PacketTranslator<ServerUpdateTileEntityPacket> {
 
+    // This should be modified if sign text is not showing up
+    private static final int DELAY = 500;
+
     @Override
     public void translate(ServerUpdateTileEntityPacket packet, GeyserSession session) {
         String id = BlockEntityUtils.getBedrockBlockEntityId(packet.getType().name());
-        if (packet.getNbt().isEmpty()) { // Fixes errors in CubeCraft sending empty NBT
-            BlockEntityUtils.updateBlockEntity(session, null, packet.getPosition());
-            return;
-        }
         BlockEntityTranslator translator = BlockEntityUtils.getBlockEntityTranslator(id);
         // If not null then the BlockState is used in BlockEntityTranslator.translateTag()
-        if (ChunkUtils.CACHED_BLOCK_ENTITIES.containsKey(packet.getPosition())) {
-            int blockState = ChunkUtils.CACHED_BLOCK_ENTITIES.getOrDefault(packet.getPosition(), 0);
+        if (ChunkUtils.CACHED_BLOCK_ENTITIES.get(packet.getPosition()) != null) {
             BlockEntityUtils.updateBlockEntity(session, translator.getBlockEntityTag(id, packet.getNbt(),
-                    blockState), packet.getPosition());
-            ChunkUtils.CACHED_BLOCK_ENTITIES.remove(packet.getPosition(), blockState);
+                    ChunkUtils.CACHED_BLOCK_ENTITIES.get(packet.getPosition())), packet.getPosition());
+            ChunkUtils.CACHED_BLOCK_ENTITIES.remove(packet.getPosition());
+        } else if (translator.getClass().getAnnotation(BlockEntity.class).delay()) {
+            // Delay so chunks can finish sending
+            session.getConnector().getGeneralThreadPool().schedule(() ->
+                            BlockEntityUtils.updateBlockEntity(session, translator.getBlockEntityTag(id, packet.getNbt(), null), packet.getPosition()),
+                    DELAY, TimeUnit.MILLISECONDS);
         } else {
-            BlockEntityUtils.updateBlockEntity(session, translator.getBlockEntityTag(id, packet.getNbt(), 0), packet.getPosition());
+            BlockEntityUtils.updateBlockEntity(session, translator.getBlockEntityTag(id, packet.getNbt(), null), packet.getPosition());
         }
     }
 }

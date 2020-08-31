@@ -25,17 +25,20 @@
 
 package org.geysermc.connector.network.translators.java;
 
-import com.github.steveice10.mc.protocol.packet.ingame.server.ServerRespawnPacket;
 import com.nukkitx.math.vector.Vector3f;
 import com.nukkitx.protocol.bedrock.data.LevelEventType;
 import com.nukkitx.protocol.bedrock.packet.LevelEventPacket;
-import com.nukkitx.protocol.bedrock.packet.SetPlayerGameTypePacket;
 import org.geysermc.connector.entity.Entity;
 import org.geysermc.connector.entity.attribute.AttributeType;
 import org.geysermc.connector.network.session.GeyserSession;
 import org.geysermc.connector.network.translators.PacketTranslator;
 import org.geysermc.connector.network.translators.Translator;
 import org.geysermc.connector.utils.DimensionUtils;
+
+import com.github.steveice10.mc.protocol.packet.ingame.server.ServerRespawnPacket;
+import com.nukkitx.protocol.bedrock.packet.SetPlayerGameTypePacket;
+
+import java.util.concurrent.ThreadLocalRandom;
 
 @Translator(packet = ServerRespawnPacket.class)
 public class JavaRespawnTranslator extends PacketTranslator<ServerRespawnPacket> {
@@ -54,26 +57,22 @@ public class JavaRespawnTranslator extends PacketTranslator<ServerRespawnPacket>
 
         SetPlayerGameTypePacket playerGameTypePacket = new SetPlayerGameTypePacket();
         playerGameTypePacket.setGamemode(packet.getGamemode().ordinal());
-        session.sendUpstreamPacket(playerGameTypePacket);
+        session.getUpstream().sendPacket(playerGameTypePacket);
         session.setGameMode(packet.getGamemode());
 
-        if (session.isRaining()) {
-            LevelEventPacket stopRainPacket = new LevelEventPacket();
-            stopRainPacket.setType(LevelEventType.STOP_RAINING);
-            stopRainPacket.setData(0);
-            stopRainPacket.setPosition(Vector3f.ZERO);
-            session.sendUpstreamPacket(stopRainPacket);
-            session.setRaining(false);
-        }
+        LevelEventPacket stopRainPacket = new LevelEventPacket();
+        stopRainPacket.setType(LevelEventType.STOP_RAIN);
+        stopRainPacket.setData(ThreadLocalRandom.current().nextInt(50000) + 10000);
+        stopRainPacket.setPosition(Vector3f.ZERO);
+        session.getUpstream().sendPacket(stopRainPacket);
 
-        String newDimension = DimensionUtils.getNewDimension(packet.getDimension());
-        if (!entity.getDimension().equals(newDimension)) {
-            DimensionUtils.switchDimension(session, newDimension);
+        if (entity.getDimension() != DimensionUtils.javaToBedrock(packet.getDimension())) {
+            DimensionUtils.switchDimension(session, packet.getDimension());
         } else {
             if (session.isManyDimPackets()) { //reloading world
-                String fakeDim = entity.getDimension().equals(DimensionUtils.OVERWORLD) ? DimensionUtils.NETHER : DimensionUtils.OVERWORLD;
+                int fakeDim = entity.getDimension() == 0 ? -1 : 0;
                 DimensionUtils.switchDimension(session, fakeDim);
-                DimensionUtils.switchDimension(session, newDimension);
+                DimensionUtils.switchDimension(session, packet.getDimension());
             } else {
                 // Handled in JavaPlayerPositionRotationTranslator
                 session.setSpawned(false);

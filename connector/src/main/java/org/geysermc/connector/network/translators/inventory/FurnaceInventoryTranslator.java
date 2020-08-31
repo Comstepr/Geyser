@@ -26,7 +26,7 @@
 package org.geysermc.connector.network.translators.inventory;
 
 import com.github.steveice10.mc.protocol.data.game.window.WindowType;
-import com.nukkitx.protocol.bedrock.data.inventory.ContainerType;
+import com.nukkitx.protocol.bedrock.data.ContainerType;
 import com.nukkitx.protocol.bedrock.packet.ContainerSetDataPacket;
 import org.geysermc.connector.inventory.Inventory;
 import org.geysermc.connector.network.session.GeyserSession;
@@ -58,7 +58,7 @@ public class FurnaceInventoryTranslator extends BlockInventoryTranslator {
                 return;
         }
         dataPacket.setValue(value);
-        session.sendUpstreamPacket(dataPacket);
+        session.getUpstream().sendPacket(dataPacket);
     }
 
     @Override

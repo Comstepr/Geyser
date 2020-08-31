@@ -26,10 +26,10 @@
 package org.geysermc.platform.sponge.command;
 
 import lombok.AllArgsConstructor;
+
+import org.geysermc.common.ChatColor;
 import org.geysermc.connector.GeyserConnector;
-import org.geysermc.connector.common.ChatColor;
 import org.geysermc.connector.command.GeyserCommand;
-import org.geysermc.connector.utils.LanguageUtils;
 import org.spongepowered.api.command.CommandCallable;
 import org.spongepowered.api.command.CommandException;
 import org.spongepowered.api.command.CommandResult;
@@ -55,8 +55,7 @@ public class GeyserSpongeCommandExecutor implements CommandCallable {
         if (args.length > 0) {
             if (getCommand(args[0]) != null) {
                 if (!source.hasPermission(getCommand(args[0]).getPermission())) {
-                    // Not ideal to use log here but we dont get a session
-                    source.sendMessage(Text.of(ChatColor.RED + LanguageUtils.getLocaleStringLog("geyser.bootstrap.command.permission_fail")));
+                    source.sendMessage(Text.of(ChatColor.RED + "You do not have permission to execute this command!"));
                     return CommandResult.success();
                 }
                 getCommand(args[0]).execute(new SpongeCommandSender(source), args);

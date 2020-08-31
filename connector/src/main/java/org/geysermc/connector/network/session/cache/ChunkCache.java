@@ -28,42 +28,35 @@ package org.geysermc.connector.network.session.cache;
 import com.github.steveice10.mc.protocol.data.game.chunk.Chunk;
 import com.github.steveice10.mc.protocol.data.game.chunk.Column;
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.Position;
+import com.github.steveice10.mc.protocol.data.game.world.block.BlockState;
+import com.nukkitx.protocol.bedrock.packet.LevelChunkPacket;
 import lombok.Getter;
-import org.geysermc.connector.bootstrap.GeyserBootstrap;
 import org.geysermc.connector.network.session.GeyserSession;
-import org.geysermc.connector.network.translators.world.block.BlockTranslator;
-import org.geysermc.connector.network.translators.world.chunk.ChunkPosition;
+import org.geysermc.connector.network.translators.Translators;
+import org.geysermc.connector.network.translators.block.BlockTranslator;
+import org.geysermc.connector.world.chunk.ChunkPosition;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class ChunkCache {
 
-    private final boolean cache;
+    private GeyserSession session;
 
     @Getter
-    private Map<ChunkPosition, Column> chunks = new HashMap<>();
+    private Map<ChunkPosition, Column> chunks;
 
     public ChunkCache(GeyserSession session) {
-        if (session.getConnector().getWorldManager().getClass() == GeyserBootstrap.DEFAULT_CHUNK_MANAGER.getClass()) {
-            this.cache = session.getConnector().getConfig().isCacheChunks();
-        } else {
-            this.cache = false; // To prevent Spigot from initializing
-        }
+        this.session = session;
+        this.chunks = new HashMap<>();
     }
 
     public void addToCache(Column chunk) {
-        if (!cache) {
-            return;
-        }
         ChunkPosition position = new ChunkPosition(chunk.getX(), chunk.getZ());
         chunks.put(position, chunk);
     }
 
-    public void updateBlock(Position position, int block) {
-        if (!cache) {
-            return;
-        }
+    public void updateBlock(Position position, BlockState block) {
         ChunkPosition chunkPosition = new ChunkPosition(position.getX() >> 4, position.getZ() >> 4);
         if (!chunks.containsKey(chunkPosition))
             return;
@@ -76,10 +69,7 @@ public class ChunkCache {
         }
     }
 
-    public int getBlockAt(Position position) {
-        if (!cache) {
-            return BlockTranslator.AIR;
-        }
+    public BlockState getBlockAt(Position position) {
         ChunkPosition chunkPosition = new ChunkPosition(position.getX() >> 4, position.getZ() >> 4);
         if (!chunks.containsKey(chunkPosition))
             return BlockTranslator.AIR;
@@ -95,9 +85,24 @@ public class ChunkCache {
     }
 
     public void removeChunk(ChunkPosition position) {
-        if (!cache) {
-            return;
-        }
         chunks.remove(position);
+        sendEmptyChunk(position, true);
+    }
+
+    public void sendEmptyChunk(ChunkPosition position) {
+        sendEmptyChunk(position, false);
+    }
+
+    public void sendEmptyChunk(ChunkPosition position, boolean force) {
+        if (!force && chunks.containsKey(position))
+            return;
+
+        LevelChunkPacket levelChunkPacket = new LevelChunkPacket();
+        levelChunkPacket.setChunkX(position.getX());
+        levelChunkPacket.setChunkZ(position.getZ());
+        levelChunkPacket.setCachingEnabled(false);
+        levelChunkPacket.setSubChunksLength(0);
+        levelChunkPacket.setData(Translators.EMPTY_LEVEL_CHUNK_DATA);
+        session.getUpstream().sendPacket(levelChunkPacket);
     }
 }

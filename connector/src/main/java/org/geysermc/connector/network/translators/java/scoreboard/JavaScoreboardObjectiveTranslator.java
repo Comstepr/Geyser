@@ -26,7 +26,7 @@
 package org.geysermc.connector.network.translators.java.scoreboard;
 
 import org.geysermc.connector.network.session.GeyserSession;
-import org.geysermc.connector.network.session.cache.WorldCache;
+import org.geysermc.connector.network.session.cache.ScoreboardCache;
 import org.geysermc.connector.network.translators.PacketTranslator;
 import org.geysermc.connector.network.translators.Translator;
 import org.geysermc.connector.scoreboard.Objective;
@@ -41,7 +41,7 @@ public class JavaScoreboardObjectiveTranslator extends PacketTranslator<ServerSc
 
     @Override
     public void translate(ServerScoreboardObjectivePacket packet, GeyserSession session) {
-        WorldCache cache = session.getWorldCache();
+        ScoreboardCache cache = session.getScoreboardCache();
         Scoreboard scoreboard = cache.getScoreboard();
 
         Objective objective = scoreboard.getObjective(packet.getName());

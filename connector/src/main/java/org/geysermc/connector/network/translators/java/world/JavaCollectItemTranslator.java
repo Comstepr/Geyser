@@ -50,6 +50,6 @@ public class JavaCollectItemTranslator extends PacketTranslator<ServerEntityColl
         }
         takeItemEntityPacket.setRuntimeEntityId(collectorEntity.getGeyserId());
         takeItemEntityPacket.setItemRuntimeEntityId(collectedEntity.getGeyserId());
-        session.sendUpstreamPacket(takeItemEntityPacket);
+        session.getUpstream().sendPacket(takeItemEntityPacket);
     }
 }

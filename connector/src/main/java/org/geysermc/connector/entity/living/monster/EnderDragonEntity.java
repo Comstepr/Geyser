@@ -27,9 +27,9 @@ package org.geysermc.connector.entity.living.monster;
 
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.EntityMetadata;
 import com.nukkitx.math.vector.Vector3f;
-import com.nukkitx.protocol.bedrock.data.AttributeData;
-import com.nukkitx.protocol.bedrock.data.entity.EntityEventType;
-import com.nukkitx.protocol.bedrock.data.entity.EntityFlag;
+import com.nukkitx.protocol.bedrock.data.Attribute;
+import com.nukkitx.protocol.bedrock.data.EntityEventType;
+import com.nukkitx.protocol.bedrock.data.EntityFlag;
 import com.nukkitx.protocol.bedrock.packet.AddEntityPacket;
 import com.nukkitx.protocol.bedrock.packet.EntityEventPacket;
 import org.geysermc.connector.entity.living.InsentientEntity;
@@ -53,7 +53,7 @@ public class EnderDragonEntity extends InsentientEntity {
                     entityEventPacket.setType(EntityEventType.DRAGON_FLAMING);
                     entityEventPacket.setRuntimeEntityId(geyserId);
                     entityEventPacket.setData(0);
-                    session.sendUpstreamPacket(entityEventPacket);
+                    session.getUpstream().sendPacket(entityEventPacket);
                 case 6:
                 case 7:
                     metadata.getFlags().setFlag(EntityFlag.SITTING, true);
@@ -76,10 +76,10 @@ public class EnderDragonEntity extends InsentientEntity {
         addEntityPacket.getMetadata().putAll(metadata);
 
         // Otherwise dragon is always 'dying'
-        addEntityPacket.getAttributes().add(new AttributeData("minecraft:health", 0.0f, 200f, 200f, 200f));
+        addEntityPacket.getAttributes().add(new Attribute("minecraft:health", 0.0f, 200f, 200f, 200f));
 
         valid = true;
-        session.sendUpstreamPacket(addEntityPacket);
+        session.getUpstream().sendPacket(addEntityPacket);
 
         session.getConnector().getLogger().debug("Spawned entity " + entityType + " at location " + position + " with id " + geyserId + " (java id " + entityId + ")");
     }

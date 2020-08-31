@@ -25,31 +25,54 @@
 
 package org.geysermc.connector.network.translators.java.entity.player;
 
-import com.github.steveice10.mc.protocol.packet.ingame.server.entity.player.ServerPlayerAbilitiesPacket;
-import com.nukkitx.protocol.bedrock.data.AdventureSetting;
-import com.nukkitx.protocol.bedrock.data.PlayerPermission;
-import com.nukkitx.protocol.bedrock.data.command.CommandPermission;
-import com.nukkitx.protocol.bedrock.packet.AdventureSettingsPacket;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import java.util.Set;
+
+import com.nukkitx.protocol.bedrock.data.CommandPermission;
 import org.geysermc.connector.entity.Entity;
-import org.geysermc.connector.entity.PlayerEntity;
 import org.geysermc.connector.network.session.GeyserSession;
 import org.geysermc.connector.network.translators.PacketTranslator;
 import org.geysermc.connector.network.translators.Translator;
 
-import java.util.Set;
+import com.github.steveice10.mc.protocol.packet.ingame.server.entity.player.ServerPlayerAbilitiesPacket;
+import com.nukkitx.protocol.bedrock.data.EntityDataMap;
+import com.nukkitx.protocol.bedrock.data.EntityFlag;
+import com.nukkitx.protocol.bedrock.data.PlayerPermission;
+import com.nukkitx.protocol.bedrock.packet.AdventureSettingsPacket;
+import com.nukkitx.protocol.bedrock.packet.SetEntityDataPacket;
+
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 @Translator(packet = ServerPlayerAbilitiesPacket.class)
 public class JavaPlayerAbilitiesTranslator extends PacketTranslator<ServerPlayerAbilitiesPacket> {
 
     @Override
     public void translate(ServerPlayerAbilitiesPacket packet, GeyserSession session) {
-        PlayerEntity entity = session.getPlayerEntity();
+        Entity entity = session.getPlayerEntity();
         if (entity == null)
             return;
 
-        session.setCanFly(packet.isCanFly());
-        session.setFlying(packet.isFlying());
-        session.sendAdventureSettings();
+        EntityDataMap metadata = entity.getMetadata();
+        metadata.getFlags().setFlag(EntityFlag.CAN_FLY, packet.isCanFly());
+
+        SetEntityDataPacket entityDataPacket = new SetEntityDataPacket();
+        entityDataPacket.setRuntimeEntityId(entity.getGeyserId());
+        entityDataPacket.getMetadata().putAll(metadata);
+        session.getUpstream().sendPacket(entityDataPacket);
+
+        Set<AdventureSettingsPacket.Flag> playerFlags = new ObjectOpenHashSet<>();
+        playerFlags.add(AdventureSettingsPacket.Flag.AUTO_JUMP);
+        if (packet.isCanFly())
+            playerFlags.add(AdventureSettingsPacket.Flag.MAY_FLY);
+
+        if (packet.isFlying())
+            playerFlags.add(AdventureSettingsPacket.Flag.FLYING);
+
+        AdventureSettingsPacket adventureSettingsPacket = new AdventureSettingsPacket();
+        adventureSettingsPacket.setPlayerPermission(PlayerPermission.MEMBER);
+        // Required or the packet simply is not sent
+        adventureSettingsPacket.setCommandPermission(CommandPermission.NORMAL);
+        adventureSettingsPacket.setUniqueEntityId(entity.getGeyserId());
+        adventureSettingsPacket.getFlags().addAll(playerFlags);
+        session.getUpstream().sendPacket(adventureSettingsPacket);
     }
 }

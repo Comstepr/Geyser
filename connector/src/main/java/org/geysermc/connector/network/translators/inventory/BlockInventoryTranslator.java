@@ -25,10 +25,11 @@
 
 package org.geysermc.connector.network.translators.inventory;
 
-import com.nukkitx.protocol.bedrock.data.inventory.ContainerType;
+import com.github.steveice10.mc.protocol.data.game.world.block.BlockState;
+import com.nukkitx.protocol.bedrock.data.ContainerType;
 import org.geysermc.connector.inventory.Inventory;
 import org.geysermc.connector.network.session.GeyserSession;
-import org.geysermc.connector.network.translators.world.block.BlockTranslator;
+import org.geysermc.connector.network.translators.block.BlockTranslator;
 import org.geysermc.connector.network.translators.inventory.holder.BlockInventoryHolder;
 import org.geysermc.connector.network.translators.inventory.holder.InventoryHolder;
 import org.geysermc.connector.network.translators.inventory.updater.InventoryUpdater;
@@ -39,7 +40,7 @@ public class BlockInventoryTranslator extends BaseInventoryTranslator {
 
     public BlockInventoryTranslator(int size, String javaBlockIdentifier, ContainerType containerType, InventoryUpdater updater) {
         super(size);
-        int javaBlockState = BlockTranslator.getJavaBlockState(javaBlockIdentifier);
+        BlockState javaBlockState = BlockTranslator.getJavaBlockState(javaBlockIdentifier);
         int blockId = BlockTranslator.getBedrockBlockId(javaBlockState);
         this.holder = new BlockInventoryHolder(blockId, containerType);
         this.updater = updater;

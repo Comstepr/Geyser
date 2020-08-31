@@ -32,6 +32,8 @@ import org.geysermc.connector.network.translators.Translator;
 
 import com.github.steveice10.mc.protocol.packet.ingame.server.ServerBossBarPacket;
 
+import java.awt.*;
+
 @Translator(packet = ServerBossBarPacket.class)
 public class JavaBossBarTranslator extends PacketTranslator<ServerBossBarPacket> {
     @Override

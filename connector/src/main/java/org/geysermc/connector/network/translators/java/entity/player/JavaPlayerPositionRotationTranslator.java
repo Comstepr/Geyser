@@ -25,107 +25,87 @@
 
 package org.geysermc.connector.network.translators.java.entity.player;
 
-import com.github.steveice10.mc.protocol.data.game.entity.player.PositionElement;
-import com.github.steveice10.mc.protocol.packet.ingame.client.world.ClientTeleportConfirmPacket;
-import com.github.steveice10.mc.protocol.packet.ingame.server.entity.player.ServerPlayerPositionRotationPacket;
-import com.nukkitx.math.vector.Vector3f;
-import com.nukkitx.protocol.bedrock.packet.MovePlayerPacket;
-import com.nukkitx.protocol.bedrock.packet.PlayStatusPacket;
-import com.nukkitx.protocol.bedrock.packet.RespawnPacket;
-import com.nukkitx.protocol.bedrock.packet.SetEntityDataPacket;
-import org.geysermc.connector.entity.PlayerEntity;
+import org.geysermc.connector.entity.Entity;
 import org.geysermc.connector.entity.type.EntityType;
 import org.geysermc.connector.network.session.GeyserSession;
-import org.geysermc.connector.network.session.cache.TeleportCache;
 import org.geysermc.connector.network.translators.PacketTranslator;
 import org.geysermc.connector.network.translators.Translator;
 import org.geysermc.connector.utils.ChunkUtils;
-import org.geysermc.connector.utils.LanguageUtils;
+
+import com.github.steveice10.mc.protocol.packet.ingame.client.world.ClientTeleportConfirmPacket;
+import com.github.steveice10.mc.protocol.packet.ingame.server.entity.player.ServerPlayerPositionRotationPacket;
+import com.nukkitx.math.vector.Vector3f;
+import com.nukkitx.protocol.bedrock.data.EntityEventType;
+import com.nukkitx.protocol.bedrock.packet.EntityEventPacket;
+import com.nukkitx.protocol.bedrock.packet.MovePlayerPacket;
+import com.nukkitx.protocol.bedrock.packet.RespawnPacket;
+import com.nukkitx.protocol.bedrock.packet.SetEntityDataPacket;
 
 @Translator(packet = ServerPlayerPositionRotationPacket.class)
 public class JavaPlayerPositionRotationTranslator extends PacketTranslator<ServerPlayerPositionRotationPacket> {
 
     @Override
     public void translate(ServerPlayerPositionRotationPacket packet, GeyserSession session) {
-        PlayerEntity entity = session.getPlayerEntity();
+        Entity entity = session.getPlayerEntity();
         if (entity == null)
             return;
-
-        if (!session.getUpstream().isInitialized()) {
-            // Spawn the player
-            PlayStatusPacket playStatusPacket = new PlayStatusPacket();
-            playStatusPacket.setStatus(PlayStatusPacket.Status.PLAYER_SPAWN);
-            session.sendUpstreamPacket(playStatusPacket);
-        }
 
         if (!session.isLoggedIn())
             return;
 
         if (!session.isSpawned()) {
-            Vector3f pos = Vector3f.from(packet.getX(), packet.getY(), packet.getZ());
+            Vector3f pos = Vector3f.from(packet.getX(), packet.getY() + EntityType.PLAYER.getOffset() + 0.1f, packet.getZ());
             entity.setPosition(pos);
             entity.setRotation(Vector3f.from(packet.getYaw(), packet.getPitch(), packet.getYaw()));
 
             RespawnPacket respawnPacket = new RespawnPacket();
-            respawnPacket.setRuntimeEntityId(0); // Bedrock server behavior
-            respawnPacket.setPosition(entity.getPosition());
+            respawnPacket.setRuntimeEntityId(entity.getGeyserId());
+            respawnPacket.setPosition(pos);
             respawnPacket.setState(RespawnPacket.State.SERVER_READY);
-            session.sendUpstreamPacket(respawnPacket);
+            session.getUpstream().sendPacket(respawnPacket);
+
+            EntityEventPacket eventPacket = new EntityEventPacket();
+            eventPacket.setRuntimeEntityId(entity.getGeyserId());
+            eventPacket.setType(EntityEventType.RESPAWN);
+            eventPacket.setData(0);
+            session.getUpstream().sendPacket(eventPacket);
 
             SetEntityDataPacket entityDataPacket = new SetEntityDataPacket();
             entityDataPacket.setRuntimeEntityId(entity.getGeyserId());
             entityDataPacket.getMetadata().putAll(entity.getMetadata());
-            session.sendUpstreamPacket(entityDataPacket);
+            session.getUpstream().sendPacket(entityDataPacket);
 
             MovePlayerPacket movePlayerPacket = new MovePlayerPacket();
             movePlayerPacket.setRuntimeEntityId(entity.getGeyserId());
-            movePlayerPacket.setPosition(entity.getPosition());
+            movePlayerPacket.setPosition(pos);
             movePlayerPacket.setRotation(Vector3f.from(packet.getPitch(), packet.getYaw(), 0));
-            movePlayerPacket.setMode(MovePlayerPacket.Mode.RESPAWN);
+            movePlayerPacket.setMode(MovePlayerPacket.Mode.RESET);
 
-            session.sendUpstreamPacket(movePlayerPacket);
+            session.getUpstream().sendPacket(movePlayerPacket);
             session.setSpawned(true);
 
             ClientTeleportConfirmPacket teleportConfirmPacket = new ClientTeleportConfirmPacket(packet.getTeleportId());
-            session.sendDownstreamPacket(teleportConfirmPacket);
+            session.getDownstream().getSession().send(teleportConfirmPacket);
 
             ChunkUtils.updateChunkPosition(session, pos.toInt());
 
-            session.getConnector().getLogger().info(LanguageUtils.getLocaleStringLog("geyser.entity.player.spawn", packet.getX(), packet.getY(), packet.getZ()));
+            session.getConnector().getLogger().info("Spawned player at " + packet.getX() + " " + packet.getY() + " " + packet.getZ());
             return;
         }
 
         session.setSpawned(true);
-
-        // Ignore certain move correction packets for smoother movement
-        // These are never relative
-        if (packet.getRelative().isEmpty()) {
+        if (!packet.getRelative().isEmpty()) {
+            entity.moveRelative(session, packet.getX(), packet.getY() + EntityType.PLAYER.getOffset() + 0.1f, packet.getZ(), packet.getYaw(), packet.getPitch(), true);
+        } else {
             double xDis = Math.abs(entity.getPosition().getX() - packet.getX());
             double yDis = entity.getPosition().getY() - packet.getY();
             double zDis = Math.abs(entity.getPosition().getZ() - packet.getZ());
-            if (!(xDis > 1.5 || (yDis < 1.45 || yDis > (session.isJumping() ? 4.3 : (session.isSprinting() ? 2.5 : 1.9))) || zDis > 1.5)) {
-                // Fake confirm the teleport but don't send it to the client
-                ClientTeleportConfirmPacket teleportConfirmPacket = new ClientTeleportConfirmPacket(packet.getTeleportId());
-                session.sendDownstreamPacket(teleportConfirmPacket);
-                return;
+            if (xDis > 1.5 || (yDis < 1.45 || yDis > (session.isJumping() ? 4.3 : (session.isSprinting() ? 2.5 : 1.9))) || zDis > 1.5) {
+                entity.moveAbsolute(session, Vector3f.from(packet.getX(), packet.getY(), packet.getZ()), packet.getYaw(), packet.getPitch(), true);
             }
         }
 
-        // If coordinates are relative, then add to the existing coordinate
-        double newX = packet.getX() +
-                (packet.getRelative().contains(PositionElement.X) ? entity.getPosition().getX() : 0);
-        double newY = packet.getY() +
-                (packet.getRelative().contains(PositionElement.Y) ? entity.getPosition().getY() - EntityType.PLAYER.getOffset() : 0);
-        double newZ = packet.getZ() +
-                (packet.getRelative().contains(PositionElement.Z) ? entity.getPosition().getZ() : 0);
-
-        double newPitch = packet.getPitch() +
-                (packet.getRelative().contains(PositionElement.PITCH) ? entity.getBedrockRotation().getX() : 0);
-        double newYaw = packet.getYaw() +
-                (packet.getRelative().contains(PositionElement.YAW) ? entity.getBedrockRotation().getY() : 0);
-
-
-        session.setTeleportCache(new TeleportCache(newX, newY, newZ, packet.getTeleportId()));
-        entity.moveAbsolute(session, Vector3f.from(newX, newY, newZ), (float) newYaw, (float) newPitch, true, true);
+        ClientTeleportConfirmPacket teleportConfirmPacket = new ClientTeleportConfirmPacket(packet.getTeleportId());
+        session.getDownstream().getSession().send(teleportConfirmPacket);
     }
 }

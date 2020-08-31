@@ -30,7 +30,7 @@ import com.github.steveice10.mc.protocol.data.game.entity.metadata.Position;
 import com.github.steveice10.mc.protocol.data.game.world.block.BlockFace;
 import com.nukkitx.math.vector.Vector3f;
 import com.nukkitx.math.vector.Vector3i;
-import com.nukkitx.protocol.bedrock.data.entity.EntityData;
+import com.nukkitx.protocol.bedrock.data.EntityData;
 import org.geysermc.connector.entity.living.GolemEntity;
 import org.geysermc.connector.entity.type.EntityType;
 import org.geysermc.connector.network.session.GeyserSession;
@@ -53,21 +53,14 @@ public class ShulkerEntity extends GolemEntity {
                 metadata.put(EntityData.SHULKER_ATTACH_POS, Vector3i.from(position.getX(), position.getY(), position.getZ()));
             }
         }
-
-        if (entityMetadata.getId() == 17) {
-            int height = (byte) entityMetadata.getValue();
-            metadata.put(EntityData.SHULKER_PEEK_ID, height);
-        }
-
+        //TODO Outdated metadata flag SHULKER_PEAK_HEIGHT
+//        if (entityMetadata.getId() == 17) {
+//            int height = (byte) entityMetadata.getValue();
+//            metadata.put(EntityData.SHULKER_PEAK_HEIGHT, height);
+//        }
         if (entityMetadata.getId() == 18) {
-            byte color = (byte) entityMetadata.getValue();
-            if (color == 16) {
-                // 16 is default on both editions
-                metadata.put(EntityData.VARIANT, 16);
-            } else {
-                // Every other shulker color is offset 15 in bedrock edition
-                metadata.put(EntityData.VARIANT, Math.abs(color - 15));
-            }
+            int color = Math.abs((byte) entityMetadata.getValue() - 15);
+            metadata.put(EntityData.VARIANT, color);
         }
         super.updateBedrockMetadata(entityMetadata, session);
     }

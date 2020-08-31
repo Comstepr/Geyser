@@ -62,6 +62,6 @@ public class JavaEntityAnimationTranslator extends PacketTranslator<ServerEntity
                 break;
         }
 
-        session.sendUpstreamPacket(animatePacket);
+        session.getUpstream().sendPacket(animatePacket);
     }
 }

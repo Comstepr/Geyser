@@ -31,7 +31,7 @@ import com.nukkitx.math.vector.Vector3f;
 import com.nukkitx.protocol.bedrock.packet.AddItemEntityPacket;
 import org.geysermc.connector.entity.type.EntityType;
 import org.geysermc.connector.network.session.GeyserSession;
-import org.geysermc.connector.network.translators.item.ItemTranslator;
+import org.geysermc.connector.network.translators.Translators;
 
 public class ItemEntity extends Entity {
 
@@ -49,8 +49,8 @@ public class ItemEntity extends Entity {
             itemPacket.setUniqueEntityId(geyserId);
             itemPacket.setFromFishing(false);
             itemPacket.getMetadata().putAll(metadata);
-            itemPacket.setItemInHand(ItemTranslator.translateToBedrock(session, (ItemStack) entityMetadata.getValue()));
-            session.sendUpstreamPacket(itemPacket);
+            itemPacket.setItemInHand(Translators.getItemTranslator().translateToBedrock(session, (ItemStack) entityMetadata.getValue()));
+            session.getUpstream().sendPacket(itemPacket);
         }
 
         super.updateBedrockMetadata(entityMetadata, session);

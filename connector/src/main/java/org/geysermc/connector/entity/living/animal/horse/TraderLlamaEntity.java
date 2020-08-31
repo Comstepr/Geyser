@@ -26,7 +26,8 @@
 package org.geysermc.connector.entity.living.animal.horse;
 
 import com.nukkitx.math.vector.Vector3f;
-import com.nukkitx.protocol.bedrock.data.entity.EntityData;
+import com.nukkitx.protocol.bedrock.data.EntityData;
+import com.nukkitx.protocol.bedrock.packet.AddEntityPacket;
 import org.geysermc.connector.entity.type.EntityType;
 import org.geysermc.connector.network.session.GeyserSession;
 
@@ -38,7 +39,23 @@ public class TraderLlamaEntity extends LlamaEntity {
 
     @Override
     public void spawnEntity(GeyserSession session) {
-        this.metadata.put(EntityData.MARK_VARIANT, 1);
-        super.spawnEntity(session);
+        // The trader llama is a separate entity from the llama in Java but a normal llama with extra metadata in Bedrock.
+        AddEntityPacket addEntityPacket = new AddEntityPacket();
+        addEntityPacket.setIdentifier("minecraft:llama");
+        addEntityPacket.setRuntimeEntityId(geyserId);
+        addEntityPacket.setUniqueEntityId(geyserId);
+        addEntityPacket.setPosition(position);
+        addEntityPacket.setMotion(motion);
+        addEntityPacket.setRotation(getBedrockRotation());
+        addEntityPacket.setEntityType(entityType.getType());
+        addEntityPacket.getMetadata().putAll(metadata);
+        // Here's the difference
+        addEntityPacket.getMetadata().put(EntityData.MARK_VARIANT, 1);
+
+        valid = true;
+        session.getUpstream().sendPacket(addEntityPacket);
+
+        session.getConnector().getLogger().debug("Spawned entity " + entityType + " at location " + position + " with id " + geyserId + " (java id " + entityId + ")");
     }
+
 }

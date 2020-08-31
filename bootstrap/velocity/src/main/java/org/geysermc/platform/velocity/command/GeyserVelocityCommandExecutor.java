@@ -32,10 +32,9 @@ import lombok.AllArgsConstructor;
 
 import net.kyori.text.TextComponent;
 
-import org.geysermc.connector.common.ChatColor;
+import org.geysermc.common.ChatColor;
 import org.geysermc.connector.GeyserConnector;
 import org.geysermc.connector.command.GeyserCommand;
-import org.geysermc.connector.utils.LanguageUtils;
 
 @AllArgsConstructor
 public class GeyserVelocityCommandExecutor implements Command {
@@ -47,8 +46,7 @@ public class GeyserVelocityCommandExecutor implements Command {
         if (args.length > 0) {
             if (getCommand(args[0]) != null) {
                 if (!source.hasPermission(getCommand(args[0]).getPermission())) {
-                    // Not ideal to use log here but we dont get a session
-                    source.sendMessage(TextComponent.of(ChatColor.RED + LanguageUtils.getLocaleStringLog("geyser.bootstrap.command.permission_fail")));
+                    source.sendMessage(TextComponent.of(ChatColor.RED + "You do not have permission to execute this command!"));
                     return;
                 }
                 getCommand(args[0]).execute(new VelocityCommandSender(source), args);

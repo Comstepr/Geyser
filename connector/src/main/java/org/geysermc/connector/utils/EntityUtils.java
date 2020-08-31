@@ -26,6 +26,8 @@
 package org.geysermc.connector.utils;
 
 import com.github.steveice10.mc.protocol.data.game.entity.Effect;
+import com.github.steveice10.mc.protocol.data.game.entity.type.MobType;
+import com.github.steveice10.mc.protocol.data.game.entity.type.object.ObjectType;
 import org.geysermc.connector.entity.type.EntityType;
 
 public class EntityUtils {
@@ -42,7 +44,8 @@ public class EntityUtils {
             case LUCK:
             case UNLUCK:
             case DOLPHINS_GRACE:
-                // All Java-exclusive effects as of 1.16.2
+            case BAD_OMEN:
+            case HERO_OF_THE_VILLAGE:
                 return 0;
             case LEVITATION:
                 return 24;
@@ -50,10 +53,6 @@ public class EntityUtils {
                 return 26;
             case SLOW_FALLING:
                 return 27;
-            case BAD_OMEN:
-                return 28;
-            case HERO_OF_THE_VILLAGE:
-                return 29;
             default:
                 return effect.ordinal() + 1;
         }
@@ -65,7 +64,21 @@ public class EntityUtils {
      * @param type The MobType to convert
      * @return Converted EntityType
      */
-    public static EntityType toBedrockEntity(com.github.steveice10.mc.protocol.data.game.entity.type.EntityType type) {
+    public static EntityType toBedrockEntity(MobType type) {
+        try {
+            return EntityType.valueOf(type.name());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    /**
+     * Converts a ObjectType to a Bedrock edition EntityType, returns null if the EntityType is not found
+     *
+     * @param type The ObjectType to convert
+     * @return Converted EntityType
+     */
+    public static EntityType toBedrockEntity(ObjectType type) {
         try {
             return EntityType.valueOf(type.name());
         } catch (IllegalArgumentException ex) {

@@ -66,8 +66,7 @@ public enum Enchantment {
     CHANNELING,
     MULTISHOT,
     PIERCING,
-    QUICK_CHARGE,
-    SOUL_SPEED;
+    QUICK_CHARGE;
 
     private final String javaIdentifier;
 
@@ -77,7 +76,7 @@ public enum Enchantment {
 
     public static Enchantment getByJavaIdentifier(String javaIdentifier) {
         for (Enchantment enchantment : Enchantment.values()) {
-            if (enchantment.javaIdentifier.equals(javaIdentifier) || enchantment.name().toLowerCase(Locale.ENGLISH).equalsIgnoreCase(javaIdentifier)) {
+            if (enchantment.javaIdentifier.equals(javaIdentifier)) {
                 return enchantment;
             }
         }

@@ -26,23 +26,28 @@
 package org.geysermc.connector.network.translators.inventory;
 
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.Position;
+import com.github.steveice10.mc.protocol.data.game.world.block.BlockState;
 import com.nukkitx.math.vector.Vector3i;
-import com.nukkitx.nbt.NbtMap;
-import com.nukkitx.protocol.bedrock.data.inventory.ContainerType;
+import com.nukkitx.nbt.tag.CompoundTag;
+import com.nukkitx.protocol.bedrock.data.ContainerType;
 import com.nukkitx.protocol.bedrock.packet.BlockEntityDataPacket;
 import com.nukkitx.protocol.bedrock.packet.ContainerOpenPacket;
 import com.nukkitx.protocol.bedrock.packet.UpdateBlockPacket;
 import org.geysermc.connector.inventory.Inventory;
 import org.geysermc.connector.network.session.GeyserSession;
-import org.geysermc.connector.network.translators.world.block.BlockTranslator;
+import org.geysermc.connector.network.translators.block.BlockTranslator;
+import org.geysermc.connector.network.translators.inventory.updater.ChestInventoryUpdater;
+import org.geysermc.connector.network.translators.inventory.updater.InventoryUpdater;
 
-public class DoubleChestInventoryTranslator extends ChestInventoryTranslator {
+public class DoubleChestInventoryTranslator extends BaseInventoryTranslator {
     private final int blockId;
+    private final InventoryUpdater updater;
 
     public DoubleChestInventoryTranslator(int size) {
-        super(size, 54);
-        int javaBlockState = BlockTranslator.getJavaBlockState("minecraft:chest[facing=north,type=single,waterlogged=false]");
+        super(size);
+        BlockState javaBlockState = BlockTranslator.getJavaBlockState("minecraft:chest[facing=north,type=single,waterlogged=false]");
         this.blockId = BlockTranslator.getBedrockBlockId(javaBlockState);
+        this.updater = new ChestInventoryUpdater(54);
     }
 
     @Override
@@ -55,40 +60,40 @@ public class DoubleChestInventoryTranslator extends ChestInventoryTranslator {
         blockPacket.setBlockPosition(position);
         blockPacket.setRuntimeId(blockId);
         blockPacket.getFlags().addAll(UpdateBlockPacket.FLAG_ALL_PRIORITY);
-        session.sendUpstreamPacket(blockPacket);
+        session.getUpstream().sendPacket(blockPacket);
 
-        NbtMap tag = NbtMap.builder()
-                .putString("id", "Chest")
-                .putInt("x", position.getX())
-                .putInt("y", position.getY())
-                .putInt("z", position.getZ())
-                .putInt("pairx", pairPosition.getX())
-                .putInt("pairz", pairPosition.getZ())
-                .putString("CustomName", inventory.getTitle()).build();
+        CompoundTag tag = CompoundTag.builder()
+                .stringTag("id", "Chest")
+                .intTag("x", position.getX())
+                .intTag("y", position.getY())
+                .intTag("z", position.getZ())
+                .intTag("pairx", pairPosition.getX())
+                .intTag("pairz", pairPosition.getZ())
+                .stringTag("CustomName", inventory.getTitle()).buildRootTag();
         BlockEntityDataPacket dataPacket = new BlockEntityDataPacket();
         dataPacket.setData(tag);
         dataPacket.setBlockPosition(position);
-        session.sendUpstreamPacket(dataPacket);
+        session.getUpstream().sendPacket(dataPacket);
 
         blockPacket = new UpdateBlockPacket();
         blockPacket.setDataLayer(0);
         blockPacket.setBlockPosition(pairPosition);
         blockPacket.setRuntimeId(blockId);
         blockPacket.getFlags().addAll(UpdateBlockPacket.FLAG_ALL_PRIORITY);
-        session.sendUpstreamPacket(blockPacket);
+        session.getUpstream().sendPacket(blockPacket);
 
-        tag = NbtMap.builder()
-                .putString("id", "Chest")
-                .putInt("x", pairPosition.getX())
-                .putInt("y", pairPosition.getY())
-                .putInt("z", pairPosition.getZ())
-                .putInt("pairx", position.getX())
-                .putInt("pairz", position.getZ())
-                .putString("CustomName", inventory.getTitle()).build();
+        tag = CompoundTag.builder()
+                .stringTag("id", "Chest")
+                .intTag("x", pairPosition.getX())
+                .intTag("y", pairPosition.getY())
+                .intTag("z", pairPosition.getZ())
+                .intTag("pairx", position.getX())
+                .intTag("pairz", position.getZ())
+                .stringTag("CustomName", inventory.getTitle()).buildRootTag();
         dataPacket = new BlockEntityDataPacket();
         dataPacket.setData(tag);
         dataPacket.setBlockPosition(pairPosition);
-        session.sendUpstreamPacket(dataPacket);
+        session.getUpstream().sendPacket(dataPacket);
 
         inventory.setHolderPosition(position);
     }
@@ -96,31 +101,41 @@ public class DoubleChestInventoryTranslator extends ChestInventoryTranslator {
     @Override
     public void openInventory(GeyserSession session, Inventory inventory) {
         ContainerOpenPacket containerOpenPacket = new ContainerOpenPacket();
-        containerOpenPacket.setId((byte) inventory.getId());
-        containerOpenPacket.setType(ContainerType.CONTAINER);
+        containerOpenPacket.setWindowId((byte) inventory.getId());
+        containerOpenPacket.setType((byte) ContainerType.CONTAINER.id());
         containerOpenPacket.setBlockPosition(inventory.getHolderPosition());
         containerOpenPacket.setUniqueEntityId(inventory.getHolderId());
-        session.sendUpstreamPacket(containerOpenPacket);
+        session.getUpstream().sendPacket(containerOpenPacket);
     }
 
     @Override
     public void closeInventory(GeyserSession session, Inventory inventory) {
         Vector3i holderPos = inventory.getHolderPosition();
         Position pos = new Position(holderPos.getX(), holderPos.getY(), holderPos.getZ());
-        int realBlock = session.getConnector().getWorldManager().getBlockAt(session, pos.getX(), pos.getY(), pos.getZ());
+        BlockState realBlock = session.getChunkCache().getBlockAt(pos);
         UpdateBlockPacket blockPacket = new UpdateBlockPacket();
         blockPacket.setDataLayer(0);
         blockPacket.setBlockPosition(holderPos);
         blockPacket.setRuntimeId(BlockTranslator.getBedrockBlockId(realBlock));
-        session.sendUpstreamPacket(blockPacket);
+        session.getUpstream().sendPacket(blockPacket);
 
         holderPos = holderPos.add(Vector3i.UNIT_X);
         pos = new Position(holderPos.getX(), holderPos.getY(), holderPos.getZ());
-        realBlock = session.getConnector().getWorldManager().getBlockAt(session, pos.getX(), pos.getY(), pos.getZ());
+        realBlock = session.getChunkCache().getBlockAt(pos);
         blockPacket = new UpdateBlockPacket();
         blockPacket.setDataLayer(0);
         blockPacket.setBlockPosition(holderPos);
         blockPacket.setRuntimeId(BlockTranslator.getBedrockBlockId(realBlock));
-        session.sendUpstreamPacket(blockPacket);
+        session.getUpstream().sendPacket(blockPacket);
+    }
+
+    @Override
+    public void updateInventory(GeyserSession session, Inventory inventory) {
+        updater.updateInventory(this, session, inventory);
+    }
+
+    @Override
+    public void updateSlot(GeyserSession session, Inventory inventory, int slot) {
+        updater.updateSlot(this, session, inventory, slot);
     }
 }

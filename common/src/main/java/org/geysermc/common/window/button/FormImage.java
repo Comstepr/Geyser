@@ -32,14 +32,14 @@ public class FormImage {
 
     @Getter
     @Setter
-    private String type;
+    private FormImageType type;
 
     @Getter
     @Setter
     private String data;
 
     public FormImage(FormImageType type, String data) {
-        this.type = type.getName();
+        this.type = type;
         this.data = data;
     }
 
