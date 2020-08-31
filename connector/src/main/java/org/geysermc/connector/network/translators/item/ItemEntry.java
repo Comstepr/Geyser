@@ -27,18 +27,21 @@ package org.geysermc.connector.network.translators.item;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.ToString;
 
 @Getter
 @AllArgsConstructor
+@ToString
 public class ItemEntry {
 
-    public static ItemEntry AIR = new ItemEntry("minecraft:air", 0, 0, 0);
+    public static ItemEntry AIR = new ItemEntry("minecraft:air", 0, 0, 0, false);
 
     private final String javaIdentifier;
     private final int javaId;
-
     private final int bedrockId;
     private final int bedrockData;
+
+    private final boolean block;
 
     @Override
     public boolean equals(Object obj) {

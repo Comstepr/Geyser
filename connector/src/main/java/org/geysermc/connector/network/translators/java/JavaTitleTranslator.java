@@ -39,24 +39,25 @@ public class JavaTitleTranslator extends PacketTranslator<ServerTitlePacket> {
     @Override
     public void translate(ServerTitlePacket packet, GeyserSession session) {
         SetTitlePacket titlePacket = new SetTitlePacket();
+        String locale = session.getClientData().getLanguageCode();
 
         switch (packet.getAction()) {
             case TITLE:
-                titlePacket.setType(SetTitlePacket.Type.SET_TITLE);
-                titlePacket.setText(MessageUtils.getBedrockMessage(packet.getTitle()));
+                titlePacket.setType(SetTitlePacket.Type.TITLE);
+                titlePacket.setText(MessageUtils.getTranslatedBedrockMessage(packet.getTitle(), locale));
                 break;
             case SUBTITLE:
-                titlePacket.setType(SetTitlePacket.Type.SET_SUBTITLE);
-                titlePacket.setText(MessageUtils.getBedrockMessage(packet.getTitle()));
+                titlePacket.setType(SetTitlePacket.Type.SUBTITLE);
+                titlePacket.setText(MessageUtils.getTranslatedBedrockMessage(packet.getTitle(), locale));
                 break;
             case CLEAR:
             case RESET:
-                titlePacket.setType(SetTitlePacket.Type.RESET_TITLE);
+                titlePacket.setType(SetTitlePacket.Type.CLEAR);
                 titlePacket.setText("");
                 break;
             case ACTION_BAR:
-                titlePacket.setType(SetTitlePacket.Type.SET_ACTIONBAR_MESSAGE);
-                titlePacket.setText(MessageUtils.getBedrockMessage(packet.getTitle()));
+                titlePacket.setType(SetTitlePacket.Type.ACTIONBAR);
+                titlePacket.setText(MessageUtils.getTranslatedBedrockMessage(packet.getTitle(), locale));
                 break;
             case TIMES:
                 titlePacket.setFadeInTime(packet.getFadeIn());
@@ -65,6 +66,6 @@ public class JavaTitleTranslator extends PacketTranslator<ServerTitlePacket> {
                 break;
         }
 
-        session.getUpstream().sendPacket(titlePacket);
+        session.sendUpstreamPacket(titlePacket);
     }
 }
