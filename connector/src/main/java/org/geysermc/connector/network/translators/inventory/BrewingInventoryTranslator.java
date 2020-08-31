@@ -25,8 +25,8 @@
 
 package org.geysermc.connector.network.translators.inventory;
 
-import com.nukkitx.protocol.bedrock.data.ContainerType;
-import com.nukkitx.protocol.bedrock.data.InventoryActionData;
+import com.nukkitx.protocol.bedrock.data.inventory.ContainerType;
+import com.nukkitx.protocol.bedrock.data.inventory.InventoryActionData;
 import com.nukkitx.protocol.bedrock.packet.ContainerSetDataPacket;
 import org.geysermc.connector.inventory.Inventory;
 import org.geysermc.connector.network.session.GeyserSession;
@@ -44,7 +44,7 @@ public class BrewingInventoryTranslator extends BlockInventoryTranslator {
         dataPacket.setWindowId((byte) inventory.getId());
         dataPacket.setProperty(ContainerSetDataPacket.BREWING_STAND_FUEL_TOTAL);
         dataPacket.setValue(20);
-        session.getUpstream().sendPacket(dataPacket);
+        session.sendUpstreamPacket(dataPacket);
     }
 
     @Override
@@ -62,7 +62,7 @@ public class BrewingInventoryTranslator extends BlockInventoryTranslator {
                 return;
         }
         dataPacket.setValue(value);
-        session.getUpstream().sendPacket(dataPacket);
+        session.sendUpstreamPacket(dataPacket);
     }
 
     @Override

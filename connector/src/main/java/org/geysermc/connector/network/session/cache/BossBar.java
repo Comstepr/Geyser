@@ -27,7 +27,7 @@ package org.geysermc.connector.network.session.cache;
 
 import com.github.steveice10.mc.protocol.data.message.Message;
 import com.nukkitx.math.vector.Vector3f;
-import com.nukkitx.protocol.bedrock.data.EntityData;
+import com.nukkitx.protocol.bedrock.data.entity.EntityData;
 import com.nukkitx.protocol.bedrock.packet.AddEntityPacket;
 import com.nukkitx.protocol.bedrock.packet.BossEventPacket;
 import com.nukkitx.protocol.bedrock.packet.RemoveEntityPacket;
@@ -52,45 +52,47 @@ public class BossBar {
         updateBossBar();
     }
 
+    //TODO: There is a player unique entity ID - if this didn't exist before, we may be able to get rid of our hack
+
     public void updateBossBar() {
         BossEventPacket bossEventPacket = new BossEventPacket();
         bossEventPacket.setBossUniqueEntityId(entityId);
-        bossEventPacket.setAction(BossEventPacket.Action.SHOW);
+        bossEventPacket.setAction(BossEventPacket.Action.CREATE);
         bossEventPacket.setTitle(MessageUtils.getTranslatedBedrockMessage(title, session.getClientData().getLanguageCode()));
         bossEventPacket.setHealthPercentage(health);
         bossEventPacket.setColor(color); //ignored by client
         bossEventPacket.setOverlay(overlay);
         bossEventPacket.setDarkenSky(darkenSky);
 
-        session.getUpstream().sendPacket(bossEventPacket);
+        session.sendUpstreamPacket(bossEventPacket);
     }
 
     public void updateTitle(Message title) {
         this.title = title;
         BossEventPacket bossEventPacket = new BossEventPacket();
         bossEventPacket.setBossUniqueEntityId(entityId);
-        bossEventPacket.setAction(BossEventPacket.Action.TITLE);
+        bossEventPacket.setAction(BossEventPacket.Action.UPDATE_NAME);
         bossEventPacket.setTitle(MessageUtils.getTranslatedBedrockMessage(title, session.getClientData().getLanguageCode()));
 
-        session.getUpstream().sendPacket(bossEventPacket);
+        session.sendUpstreamPacket(bossEventPacket);
     }
 
     public void updateHealth(float health) {
         this.health = health;
         BossEventPacket bossEventPacket = new BossEventPacket();
         bossEventPacket.setBossUniqueEntityId(entityId);
-        bossEventPacket.setAction(BossEventPacket.Action.HEALTH_PERCENTAGE);
+        bossEventPacket.setAction(BossEventPacket.Action.UPDATE_PERCENTAGE);
         bossEventPacket.setHealthPercentage(health);
 
-        session.getUpstream().sendPacket(bossEventPacket);
+        session.sendUpstreamPacket(bossEventPacket);
     }
 
     public void removeBossBar() {
         BossEventPacket bossEventPacket = new BossEventPacket();
         bossEventPacket.setBossUniqueEntityId(entityId);
-        bossEventPacket.setAction(BossEventPacket.Action.HIDE);
+        bossEventPacket.setAction(BossEventPacket.Action.REMOVE);
 
-        session.getUpstream().sendPacket(bossEventPacket);
+        session.sendUpstreamPacket(bossEventPacket);
         removeBossEntity();
     }
 
@@ -104,18 +106,21 @@ public class BossBar {
         addEntityPacket.setRuntimeEntityId(entityId);
         addEntityPacket.setIdentifier("minecraft:creeper");
         addEntityPacket.setEntityType(33);
-        addEntityPacket.setPosition(session.getPlayerEntity().getPosition());
+        addEntityPacket.setPosition(session.getPlayerEntity().getPosition().sub(0D, -10D, 0D));
         addEntityPacket.setRotation(Vector3f.ZERO);
         addEntityPacket.setMotion(Vector3f.ZERO);
-        addEntityPacket.getMetadata().put(EntityData.SCALE, 0.01F); // scale = 0 doesn't work?
+        addEntityPacket.getMetadata()
+                .putFloat(EntityData.SCALE, 0F)
+                .putFloat(EntityData.BOUNDING_BOX_WIDTH, 0F)
+                .putFloat(EntityData.BOUNDING_BOX_HEIGHT, 0F);
 
-        session.getUpstream().sendPacket(addEntityPacket);
+        session.sendUpstreamPacket(addEntityPacket);
     }
 
     private void removeBossEntity() {
         RemoveEntityPacket removeEntityPacket = new RemoveEntityPacket();
         removeEntityPacket.setUniqueEntityId(entityId);
 
-        session.getUpstream().sendPacket(removeEntityPacket);
+        session.sendUpstreamPacket(removeEntityPacket);
     }
 }

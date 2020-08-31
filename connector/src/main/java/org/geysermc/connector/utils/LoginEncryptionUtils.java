@@ -34,9 +34,6 @@ import com.nukkitx.network.util.Preconditions;
 import com.nukkitx.protocol.bedrock.packet.LoginPacket;
 import com.nukkitx.protocol.bedrock.packet.ServerToClientHandshakePacket;
 import com.nukkitx.protocol.bedrock.util.EncryptionUtils;
-
-import net.minidev.json.JSONObject;
-
 import org.geysermc.common.window.CustomFormBuilder;
 import org.geysermc.common.window.CustomFormWindow;
 import org.geysermc.common.window.FormWindow;
@@ -75,7 +72,7 @@ public class LoginEncryptionUtils {
             }
 
             if (lastKey != null) {
-                EncryptionUtils.verifyJwt(jwt, lastKey);
+                 if (!EncryptionUtils.verifyJwt(jwt, lastKey)) return false;
             }
 
             JsonNode payloadNode = JSON_MAPPER.readTree(jwt.getPayload().toString());
@@ -108,6 +105,10 @@ public class LoginEncryptionUtils {
 
             connector.getLogger().debug(String.format("Is player data valid? %s", validChain));
 
+            if (!validChain && !session.getConnector().getConfig().isEnableProxyConnections()) {
+                session.disconnect(LanguageUtils.getLocaleStringLog("geyser.network.remote.invalid_xbox_account"));
+                return;
+            }
             JWSObject jwt = JWSObject.parse(certChainData.get(certChainData.size() - 1).asText());
             JsonNode payload = JSON_MAPPER.readTree(jwt.getPayload().toBytes());
 
@@ -152,25 +153,27 @@ public class LoginEncryptionUtils {
 
         ServerToClientHandshakePacket packet = new ServerToClientHandshakePacket();
         packet.setJwt(EncryptionUtils.createHandshakeJwt(serverKeyPair, token).serialize());
-        session.getUpstream().sendPacketImmediately(packet);
+        session.sendUpstreamPacketImmediately(packet);
     }
 
     private static int AUTH_FORM_ID = 1336;
     private static int AUTH_DETAILS_FORM_ID = 1337;
 
     public static void showLoginWindow(GeyserSession session) {
-        SimpleFormWindow window = new SimpleFormWindow("Login", "You need a Java Edition account to play on this server.");
-        window.getButtons().add(new FormButton("Login with Minecraft"));
-        window.getButtons().add(new FormButton("Disconnect"));
+        String userLanguage = session.getClientData().getLanguageCode();
+        SimpleFormWindow window = new SimpleFormWindow(LanguageUtils.getPlayerLocaleString("geyser.auth.login.form.notice.title", userLanguage), LanguageUtils.getPlayerLocaleString("geyser.auth.login.form.notice.desc", userLanguage));
+        window.getButtons().add(new FormButton(LanguageUtils.getPlayerLocaleString("geyser.auth.login.form.notice.btn_login", userLanguage)));
+        window.getButtons().add(new FormButton(LanguageUtils.getPlayerLocaleString("geyser.auth.login.form.notice.btn_disconnect", userLanguage)));
 
         session.sendForm(window, AUTH_FORM_ID);
     }
 
     public static void showLoginDetailsWindow(GeyserSession session) {
-        CustomFormWindow window = new CustomFormBuilder("Login Details")
-                .addComponent(new LabelComponent("Enter the credentials for your Minecraft: Java Edition account below."))
-                .addComponent(new InputComponent("Email/Username", "account@geysermc.org", ""))
-                .addComponent(new InputComponent("Password", "123456", ""))
+        String userLanguage = session.getClientData().getLanguageCode();
+        CustomFormWindow window = new CustomFormBuilder(LanguageUtils.getPlayerLocaleString("geyser.auth.login.form.details.title", userLanguage))
+                .addComponent(new LabelComponent(LanguageUtils.getPlayerLocaleString("geyser.auth.login.form.details.desc", userLanguage)))
+                .addComponent(new InputComponent(LanguageUtils.getPlayerLocaleString("geyser.auth.login.form.details.email", userLanguage), "account@geysermc.org", ""))
+                .addComponent(new InputComponent(LanguageUtils.getPlayerLocaleString("geyser.auth.login.form.details.pass", userLanguage), "123456", ""))
                 .build();
 
         session.sendForm(window, AUTH_DETAILS_FORM_ID);
@@ -195,18 +198,22 @@ public class LoginEncryptionUtils {
                         String password = response.getInputResponses().get(2);
 
                         session.authenticate(email, password);
+                    } else {
+                        showLoginDetailsWindow(session);
                     }
 
                     // Clear windows so authentication data isn't accidentally cached
                     windowCache.getWindows().clear();
                 } else if (formId == AUTH_FORM_ID && window instanceof SimpleFormWindow) {
                     SimpleFormResponse response = (SimpleFormResponse) window.getResponse();
-                    if(response != null) {
-                        if(response.getClickedButtonId() == 0) {
+                    if (response != null) {
+                        if (response.getClickedButtonId() == 0) {
                             showLoginDetailsWindow(session);
                         } else if(response.getClickedButtonId() == 1) {
-                            session.disconnect("Login is required");
+                            session.disconnect(LanguageUtils.getPlayerLocaleString("geyser.auth.login.form.disconnect", session.getClientData().getLanguageCode()));
                         }
+                    } else {
+                        showLoginWindow(session);
                     }
                 }
             }
