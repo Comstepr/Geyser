@@ -20,6 +20,7 @@ jobs:
         with:
           version: '13'
           architecture: x64
+          impl: openj9 
       - name: submodules-init
         uses: snickerbockers/submodules-init@v4
       - name: Build with Maven
