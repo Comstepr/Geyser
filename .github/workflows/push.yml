@@ -14,12 +14,12 @@ jobs:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
-            ${{ runner.os }}-maven-
-        - uses: actions/checkout@v1
-        - uses: AdoptOpenJDK/install-jdk@v1
-          with:
-            version: '13'
-            architecture: x64
+            ${{ runner.os }}-maven
+      - uses: actions/checkout@v1
+      - uses: AdoptOpenJDK/install-jdk@v1
+        with:
+          version: '13'
+          architecture: x64
       - name: submodules-init
         uses: snickerbockers/submodules-init@v4
       - name: Build with Maven
