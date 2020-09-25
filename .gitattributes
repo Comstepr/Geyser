@@ -1,2 +1,1 @@
-.github/workflows/pullrequest.yml merge=ours
 pullrequest.yml merge=ours
