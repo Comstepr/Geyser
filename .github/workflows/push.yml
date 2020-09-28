@@ -22,22 +22,40 @@ jobs:
       - name: submodules-init
         uses: snickerbockers/submodules-init@v4
       - name: Build with Maven
-        run: mvn -B package -T 2C -pl :geyser-parent -pl :connector -pl :bootstrap-parent -pl :bootstrap-spigot -pl :common -am
-      - name: Copy file to home directory
+        run: mvn -B package -T 2C -pl :geyser-parent -pl :connector -pl :bootstrap-parent -pl :bootstrap-spigot -pl :common -am -pl :bootstrap-bungeecord
+      - name: Copy file (Spigot) to home directory
         run: mv bootstrap/spigot/target/Geyser-Spigot.jar ./
+      - name: Copy file (BungeeCord) to home directory
+        run: mv bootstrap/spigot/target/Geyser-BungeeCord.jar ./
       - name: Archive artifacts (Spigot)
         uses: actions/upload-artifact@v2
         if: success()
         with:
           name: Geyser-Spigot
           path: ./Geyser-Spigot.jar
+      - name: Archive artifacts (BungeeCord)
+        uses: actions/upload-artifact@v2
+        if: success()
+        with:
+          name: Geyser-Spigot
+          path: ./Geyser-BungeeCord.jar
       - name: Push
         uses: github-actions-x/commit@v2.6
         if: success()
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           push-branch: 'master'
-          commit-message: 'Publish JAR file'
+          commit-message: 'Publish JAR file for Spigot'
           force-add: 'true'
           files: ./Geyser-Spigot.jar
+          name: GHActions
+      - name: Push
+        uses: github-actions-x/commit@v2.6
+        if: success()
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          push-branch: 'master'
+          commit-message: 'Publish JAR file for BungeeCord'
+          force-add: 'true'
+          files: ./Geyser-BungeeCord.jar
           name: GHActions
