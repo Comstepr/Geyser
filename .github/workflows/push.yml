@@ -26,7 +26,7 @@ jobs:
       - name: Copy file (Spigot) to home directory
         run: mv bootstrap/spigot/target/Geyser-Spigot.jar ./
       - name: Copy file (BungeeCord) to home directory
-        run: mv bootstrap/spigot/target/Geyser-BungeeCord.jar ./
+        run: mv bootstrap/bungeecord/target/Geyser-BungeeCord.jar ./
       - name: Archive artifacts (Spigot)
         uses: actions/upload-artifact@v2
         if: success()
